@@ -1,0 +1,50 @@
+{
+    "name": "schindlermachine/laravel-db-snapshots",
+    "description": "DB snapshots for Laravel using native CLI tools",
+    "keywords": [
+        "Ralph Schindler",
+        "laravel-db-snapshots",
+        "database snapshots"
+    ],
+    "homepage": "https://github.com/schindlermachine/laravel-db-snapshots",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ralph Schindler",
+            "email": "ralph@ralphschindler.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.4"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SMWks\\LaravelDbSnapshots\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SMWks\\LaravelDbSnapshots\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
