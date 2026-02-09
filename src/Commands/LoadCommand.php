@@ -1,0 +1,232 @@
+<?php
+
+namespace SMWks\LaravelDbSnapshots\Commands;
+
+use Illuminate\Console\Command;
+use SMWks\LaravelDbSnapshots\Commands\Concerns\HasCommandHelpers;
+use SMWks\LaravelDbSnapshots\PlanGroup;
+use SMWks\LaravelDbSnapshots\Snapshot;
+use SMWks\LaravelDbSnapshots\SnapshotPlan;
+
+class LoadCommand extends Command
+{
+    use HasCommandHelpers;
+
+    protected $signature = <<<'EOS'
+        db-snapshots:load
+        {plan? : The Plan or Plan Group name}
+        {file? : The file to use (not applicable for plan groups)}
+        {--cached : Use caching}
+        {--recached : Download a fresh file, even if one exists, keeping it for caching}
+        {--no-drop : Don't drop all tables in database before loading snapshot}
+        {--skip-post-commands : Skip post-load SQL commands}
+        EOS;
+
+    protected $description = 'Load database snapshot(s)';
+
+    public function handle()
+    {
+        $plan = $this->argument('plan');
+
+        // Check if it's a plan group (only if plan was specified)
+        $planGroup = $plan ? PlanGroup::find($plan) : null;
+
+        if ($planGroup) {
+            $this->info("Loading all plans in plan group: {$planGroup->name}");
+            $this->newLine();
+
+            $cached = $this->option('cached');
+            $recached = $this->option('recached');
+            $cacheByDefault = config('db-snapshots.cache_by_default', false);
+            $useLocalCopy = $cached && !$recached;
+            $keepLocalCopy = $cached || $recached || $cacheByDefault;
+            $forceDownload = $recached;
+            $skipPostCommands = $this->option('skip-post-commands');
+
+            $noDrop = $this->option('no-drop');
+
+            if (!$noDrop) {
+                $this->info('Dropping existing tables');
+                $planGroup->dropTables();
+            }
+
+            if ($this->getOutput()->isVerbose()) {
+                $planGroup->displayMessagesUsing(fn ($message) => $this->line($message));
+            }
+
+            $results = $planGroup->loadAll(
+                $useLocalCopy,
+                $keepLocalCopy,
+                $skipPostCommands,
+                $forceDownload
+            );
+
+            // Execute plan group post-load commands
+            if (!$skipPostCommands) {
+                $this->newLine();
+                $this->info('Executing plan group post-load SQL commands...');
+
+                $groupResults = $planGroup->executePostLoadCommands();
+
+                if (count($groupResults) > 0) {
+                    foreach ($groupResults as $result) {
+                        if ($result['success']) {
+                            $this->line("  <fg=green>✓</> [{$result['type']}] {$result['command']}");
+                        } else {
+                            $this->error("  <fg=red>✗</> [{$result['type']}] {$result['command']}");
+                            $this->line("    Error: {$result['error']}");
+                        }
+                    }
+                } else {
+                    $this->line('  No plan group post-load commands configured.');
+                }
+            }
+
+            $this->newLine();
+            $this->info('Load Summary:');
+
+            $this->table(
+                ['Plan', 'Status', 'Details'],
+                $results->map(function ($result) {
+                    return [
+                        $result['plan'],
+                        $result['success'] ? '<fg=green>Success</>' : '<fg=red>Failed</>',
+                        $result['success']
+                            ? ($result['snapshot'] ?? 'N/A')
+                            : ($result['reason'] ?? $result['error'] ?? 'Unknown'),
+                    ];
+                })
+            );
+
+            $this->warnAboutUnacceptedFiles();
+
+            return;
+        }
+
+        $snapshotPlans = SnapshotPlan::all();
+
+        /** @var SnapshotPlan $snapshotPlan */
+        $snapshotPlan = (!$plan)
+            ? $snapshotPlans->first()
+            : $snapshotPlans->firstWhere('name', $plan);
+
+        if (!$snapshotPlan) {
+            $this->error('Could not find a suitable plan to load from.');
+
+            return;
+        }
+
+        if (!$snapshotPlan->canLoad()) {
+            $this->error('Cannot load in this environment (' . app()->environment() . ')');
+
+            return;
+        }
+
+        $file = $this->argument('file') ?? 1;
+
+        /** @var Snapshot $snapshot */
+        $snapshot = is_numeric($file)
+            ? ($snapshotPlan->snapshots[$file - 1] ?? null)
+            : $snapshotPlan->snapshots->firstWhere('fileName', $file);
+
+        if (!$snapshot) {
+            $this->error(
+                is_numeric($file)
+                    ? "Snapshot at index $file does not exist"
+                    : "Snapshot with file name $file does not exist"
+            );
+
+            return;
+        }
+
+        $this->info("Loading {$snapshot->fileName}...");
+
+        $cached = $this->option('cached');
+        $recached = $this->option('recached');
+        $cacheByDefault = config('db-snapshots.cache_by_default', false);
+
+        $useLocalCopy = $cached && !$recached;
+        $keepLocalCopy = $cached || $recached || $cacheByDefault;
+        $forceDownload = $recached;
+
+        $noDrop = $this->option('no-drop');
+
+        if (!$noDrop) {
+            $this->info('Dropping existing tables');
+
+            $snapshotPlan->dropLocalTables();
+        }
+
+        // Setup progress bar if downloading
+        $progressBar = null;
+
+        if (!$useLocalCopy || !$snapshot->existsLocally()) {
+            $snapshot->displayProgressUsing(function ($downloaded, $total) use (&$progressBar) {
+                if (!$progressBar) {
+                    $progressBar = $this->output->createProgressBar($total);
+                    $progressBar->setFormat('very_verbose');
+                }
+
+                $progressBar->setProgress($downloaded);
+            });
+        }
+
+        if ($this->getOutput()->isVerbose()) {
+            $snapshotPlan->displayMessagesUsing(fn ($message) => $this->line($message));
+        }
+
+        $cacheInfo = $snapshot->load($useLocalCopy, $keepLocalCopy, $forceDownload);
+
+        if ($progressBar) {
+            $progressBar->finish();
+
+            $this->newLine();
+        }
+
+        // Provide cache feedback
+        if ($cacheInfo['used_cache']) {
+            $this->info('Using cached snapshot' . ($cacheInfo['smart_cache_enabled'] ? ' (validated by smart cache)' : ''));
+        } elseif ($cacheInfo['cache_was_stale']) {
+            $this->info('Downloaded fresh snapshot (cached copy was stale)');
+        }
+
+        if ($keepLocalCopy) {
+            $this->info("Keeping {$snapshot->fileName} for future loads");
+        }
+
+        // Execute post-load commands
+        if (!$this->option('skip-post-commands')) {
+            $this->newLine();
+            $this->info('Executing post-load SQL commands...');
+
+            $results = $snapshotPlan->executePostLoadCommands();
+
+            if (count($results) > 0) {
+                foreach ($results as $result) {
+                    if ($result['success']) {
+                        $this->line("  <fg=green>✓</> [{$result['type']}] {$result['command']}");
+                    } else {
+                        $this->error("  <fg=red>✗</> [{$result['type']}] {$result['command']}");
+                        $this->line("    Error: {$result['error']}");
+                    }
+                }
+            } else {
+                $this->line('  No post-load commands configured.');
+            }
+
+            $this->newLine();
+        }
+
+        $clearedFiles = $snapshotPlan->clearCached($keepLocalCopy ? $snapshot->fileName : null);
+
+        if ($clearedFiles) {
+            $this->info('Files cleared:');
+
+            foreach ($clearedFiles as $clearedFile) {
+                $this->line("  $clearedFile");
+            }
+        }
+
+        $this->warnAboutUnacceptedFiles();
+    }
+}
