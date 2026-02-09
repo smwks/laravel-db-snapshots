@@ -20,11 +20,11 @@ class MysqlDriver implements DatabaseDriver
 
         $commands = [];
 
-        $ignoreTablesOption = $ignoreTables && !$tables
+        $ignoreTablesOption = $ignoreTables && ! $tables
             ? implode(' ', array_map(fn ($table) => "--ignore-table={$database}.{$table}", $ignoreTables))
             : '';
 
-        $schemaOnlyIgnoreTablesOption = !$tables
+        $schemaOnlyIgnoreTablesOption = ! $tables
             ? implode(' ', array_map(fn ($table) => "--ignore-table={$database}.{$table}", $schemaOnlyTables))
             : '';
 

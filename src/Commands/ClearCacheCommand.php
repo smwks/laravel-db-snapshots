@@ -23,7 +23,7 @@ class ClearCacheCommand extends Command
         $files = $localDisk->allFiles($localPath);
 
         foreach ($files as $file) {
-            if (!Str::startsWith($file, $localPath)) {
+            if (! Str::startsWith($file, $localPath)) {
                 continue;
             }
 

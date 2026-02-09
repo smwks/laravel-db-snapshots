@@ -144,7 +144,7 @@ class SnapshotPlan
             throw new InvalidArgumentException('"W" in the date format is not supported as it cannot be used in DateTimeImmutable::createFromDate()');
         }
 
-        if (!strpos($this->fileTemplate, '{date')) {
+        if (! strpos($this->fileTemplate, '{date')) {
             throw new InvalidArgumentException("file_template for {$this->name} snapshot plan currently does not have a {date} placeholder");
         }
 
@@ -159,7 +159,7 @@ class SnapshotPlan
 
         if ($this->tables && $this->schemaOnlyTables) {
             foreach ($this->schemaOnlyTables as $schemaOnlyTable) {
-                if (!in_array($schemaOnlyTable, $this->tables)) {
+                if (! in_array($schemaOnlyTable, $this->tables)) {
                     throw new InvalidArgumentException('When using tables configuration, schema_only_tables that are configured must appear in tables as well');
                 }
             }
@@ -187,8 +187,8 @@ class SnapshotPlan
             $driverName = config("database.connections.{$this->connection}.driver", 'mysql');
 
             $this->driver = match ($driverName) {
-                'mysql', 'mariadb' => new MysqlDriver(),
-                'pgsql' => new PostgresDriver(),
+                'mysql', 'mariadb' => new MysqlDriver,
+                'pgsql' => new PostgresDriver,
                 default => throw new RuntimeException("Unsupported database driver: {$driverName}"),
             };
         }
@@ -199,11 +199,11 @@ class SnapshotPlan
     public function getSettings(): array
     {
         return [
-            'name'              => $this->name,
-            'connection'        => $this->connection,
-            'file_template'     => $this->fileTemplate,
-            'dump_options'      => $this->dumpOptions,
-            'keep_last'         => $this->keepLast,
+            'name' => $this->name,
+            'connection' => $this->connection,
+            'file_template' => $this->fileTemplate,
+            'dump_options' => $this->dumpOptions,
+            'keep_last' => $this->keepLast,
             'environment_locks' => $this->environmentLocks,
         ];
     }
@@ -223,12 +223,12 @@ class SnapshotPlan
         $date = Carbon::now();
         $dateAsTitle = Str::title($date->format($this->fileTemplateParts['date_format']));
 
-        $fileName = $this->fileTemplateParts['prefix'] . $dateAsTitle . $this->fileTemplateParts['postfix'] . '.sql';
+        $fileName = $this->fileTemplateParts['prefix'].$dateAsTitle.$this->fileTemplateParts['postfix'].'.sql';
 
         $driver = $this->getDriver();
         $dbConfig = $this->getDatabaseConnectionConfig();
 
-        if (!$this->localDisk->exists($this->localPath)) {
+        if (! $this->localDisk->exists($this->localPath)) {
             $this->localDisk->makeDirectory($this->localPath);
         }
 
@@ -245,7 +245,7 @@ class SnapshotPlan
             );
 
             foreach ($commands as $command) {
-                $this->callMessaging('Running: ' . $command);
+                $this->callMessaging('Running: '.$command);
 
                 $this->runCommandWithCredentials($command);
             }
@@ -261,17 +261,17 @@ class SnapshotPlan
         if ($gzipUtil) {
             $command = "$gzipUtil -f $localFileFullPath";
 
-            $this->callMessaging('Running: ' . $command);
+            $this->callMessaging('Running: '.$command);
 
             $process = Process::fromShellCommandline($command);
             $process->setTimeout(null); // No timeout for gzip operations
             $process->run();
 
-            if (!$process->isSuccessful()) {
+            if (! $process->isSuccessful()) {
                 $this->localDisk->delete("{$this->localPath}/{$fileName}");
                 $this->localDisk->delete("{$this->localPath}/{$fileName}.gz");
 
-                throw new RuntimeException('gzip command failed: ' . ($process->getErrorOutput() ?: $process->getOutput() ?: 'Unknown error'));
+                throw new RuntimeException('gzip command failed: '.($process->getErrorOutput() ?: $process->getOutput() ?: 'Unknown error'));
             }
 
             // tack on .gz as that is what the above command does
@@ -288,7 +288,7 @@ class SnapshotPlan
         $snapshot = new Snapshot($fileName, $date, $this);
 
         // don't put in list if it matches something that was overwritten
-        if (!$this->snapshots->firstWhere('fileName', $snapshot->fileName)) {
+        if (! $this->snapshots->firstWhere('fileName', $snapshot->fileName)) {
             $this->snapshots->prepend($snapshot);
         }
 
@@ -299,26 +299,26 @@ class SnapshotPlan
     {
         $fileName = Str::of($testFileName)->before('.');
 
-        if (($this->fileTemplateParts['prefix'] && !$fileName->startsWith($this->fileTemplateParts['prefix']))
-            || ($this->fileTemplateParts['postfix'] && !$fileName->endsWith($this->fileTemplateParts['postfix']))) {
+        if (($this->fileTemplateParts['prefix'] && ! $fileName->startsWith($this->fileTemplateParts['prefix']))
+            || ($this->fileTemplateParts['postfix'] && ! $fileName->endsWith($this->fileTemplateParts['postfix']))) {
             return false;
         }
 
-        if (($this->fileTemplateParts['prefix'] && !$fileName->startsWith($this->fileTemplateParts['prefix']))
-            || ($this->fileTemplateParts['postfix'] && !$fileName->endsWith($this->fileTemplateParts['postfix']))) {
+        if (($this->fileTemplateParts['prefix'] && ! $fileName->startsWith($this->fileTemplateParts['prefix']))
+            || ($this->fileTemplateParts['postfix'] && ! $fileName->endsWith($this->fileTemplateParts['postfix']))) {
             return false;
         }
 
-        if (!$this->fileTemplateParts['postfix']) {
+        if (! $this->fileTemplateParts['postfix']) {
             $fileDatePart = $fileName->after($this->fileTemplateParts['prefix']);
-        } elseif (!$this->fileTemplateParts['prefix']) {
+        } elseif (! $this->fileTemplateParts['prefix']) {
             $fileDatePart = $fileName->before($this->fileTemplateParts['postfix']);
         } else {
             $fileDatePart = $fileName->betweenFirst($this->fileTemplateParts['prefix'], $this->fileTemplateParts['postfix']);
         }
 
         try {
-            return Carbon::createFromFormat($this->fileTemplateParts['date_format'] . '|', (string) $fileDatePart);
+            return Carbon::createFromFormat($this->fileTemplateParts['date_format'].'|', (string) $fileDatePart);
         } catch (Exception $e) {
             // If Carbon cannot parse the date format (e.g., file from a removed plan with different naming),
             // return false to indicate this file doesn't match this plan's pattern
@@ -330,7 +330,7 @@ class SnapshotPlan
     {
         $fileDate = $this->matchFileAndDate($archiveFileName);
 
-        if (!$fileDate) {
+        if (! $fileDate) {
             return false;
         }
 
@@ -360,7 +360,7 @@ class SnapshotPlan
         $localFiles = $this->localDisk->allFiles($this->localPath);
 
         foreach ($localFiles as $localFile) {
-            if (!Str::startsWith($localFile, $this->localPath)) {
+            if (! Str::startsWith($localFile, $this->localPath)) {
                 continue;
             }
 
@@ -384,7 +384,7 @@ class SnapshotPlan
 
     public function dropLocalTables(): void
     {
-        $this->callMessaging('Dropping all tables on connection ' . $this->connection);
+        $this->callMessaging('Dropping all tables on connection '.$this->connection);
 
         DB::connection($this->connection)->getSchemaBuilder()->dropAllTables();
     }
@@ -397,21 +397,21 @@ class SnapshotPlan
         $globalCommands = config('db-snapshots.post_load_sqls', []);
         foreach ($globalCommands as $command) {
             try {
-                $this->callMessaging('Running SQL: ' . $command);
+                $this->callMessaging('Running SQL: '.$command);
 
                 DB::connection($this->connection)->statement($command);
 
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'global',
+                    'type' => 'global',
                     'success' => true,
                 ];
             } catch (Exception $e) {
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'global',
+                    'type' => 'global',
                     'success' => false,
-                    'error'   => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ];
             }
         }
@@ -419,21 +419,21 @@ class SnapshotPlan
         // Execute plan-specific commands
         foreach ($this->postLoadSqls as $command) {
             try {
-                $this->callMessaging('Running SQL: ' . $command);
+                $this->callMessaging('Running SQL: '.$command);
 
                 DB::connection($this->connection)->statement($command);
 
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'plan',
+                    'type' => 'plan',
                     'success' => true,
                 ];
             } catch (Exception $e) {
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'plan',
+                    'type' => 'plan',
                     'success' => false,
-                    'error'   => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ];
             }
         }
@@ -457,10 +457,10 @@ class SnapshotPlan
         );
 
         if (config('app.debug')) {
-            $this->callMessaging('Using credentials managed by ' . get_class($driver));
+            $this->callMessaging('Using credentials managed by '.get_class($driver));
         }
 
-        $this->callMessaging('Running: ' . $command);
+        $this->callMessaging('Running: '.$command);
 
         $process = Process::fromShellCommandline($command);
         $process->setTimeout(null); // No timeout for database operations
@@ -470,16 +470,16 @@ class SnapshotPlan
 
         $this->callMessaging('Cleaned up credentials');
 
-        if (!$process->isSuccessful()) {
-            throw new RuntimeException('Command failed: ' . ($process->getErrorOutput() ?: $process->getOutput() ?: 'Unknown error'));
+        if (! $process->isSuccessful()) {
+            throw new RuntimeException('Command failed: '.($process->getErrorOutput() ?: $process->getOutput() ?: 'Unknown error'));
         }
     }
 
     public function getDatabaseConnectionConfig()
     {
-        $databaseConnectionConfig = config('database.connections.' . $this->connection);
+        $databaseConnectionConfig = config('database.connections.'.$this->connection);
 
-        if (!$databaseConnectionConfig) {
+        if (! $databaseConnectionConfig) {
             throw new RuntimeException("A database connection for name {$this->connection} does not exist");
         }
 

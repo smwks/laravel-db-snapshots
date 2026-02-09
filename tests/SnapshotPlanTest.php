@@ -6,7 +6,7 @@ use SMWks\LaravelDbSnapshots\SnapshotPlan;
 
 test('get all plans based off config', function () {
     config()->set('db-snapshots.plans', [
-        'daily'   => [],
+        'daily' => [],
         'monthly' => [],
     ]);
 
@@ -57,15 +57,15 @@ test('create', function () {
 
     $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));
 
-    $expectedFile = 'cloud-snapshots/db-snapshot-daily-' . date('Ymd') . '.sql.gz';
+    $expectedFile = 'cloud-snapshots/db-snapshot-daily-'.date('Ymd').'.sql.gz';
 
     // assert snapshot object is right
-    expect($snapshot->fileName)->toBe('db-snapshot-daily-' . date('Ymd') . '.sql.gz');
+    expect($snapshot->fileName)->toBe('db-snapshot-daily-'.date('Ymd').'.sql.gz');
 
     // assert file actually on disk
     $files = $archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path'));
     expect($files)->toHaveCount(1);
-    expect(__DIR__ . '/fixtures/local-filesystem/' . $expectedFile)->toBeFile();
+    expect(__DIR__.'/fixtures/local-filesystem/'.$expectedFile)->toBeFile();
 });
 
 test('create with table list', function () {
@@ -76,7 +76,7 @@ test('create with table list', function () {
     $snapshotPlan->create();
 
     // assert command
-    $arguments = file_get_contents(__DIR__ . '/fixtures/local-filesystem/fakemysqldump-arguments.txt');
+    $arguments = file_get_contents(__DIR__.'/fixtures/local-filesystem/fakemysqldump-arguments.txt');
     expect($arguments)->toContain('laravel foo bar bam');
 });
 
@@ -89,7 +89,7 @@ test('create with table list and schema only', function () {
     $snapshotPlan->create();
 
     // assert command
-    $arguments = file_get_contents(__DIR__ . '/fixtures/local-filesystem/fakemysqldump-arguments.txt');
+    $arguments = file_get_contents(__DIR__.'/fixtures/local-filesystem/fakemysqldump-arguments.txt');
     expect($arguments)->toContain('laravel foo bam');
     expect($arguments)->toContain('laravel bar');
 });
@@ -116,11 +116,11 @@ test('snapshot plan handles orphaned files from removed plans', function () {
     $archivePath = config('db-snapshots.filesystem.archive_path');
 
     // Create a file that matches a "daily-v8" plan pattern (which we'll pretend was removed)
-    $orphanedFile = $archivePath . '/db-snapshot-daily-v8-20240913.sql.gz';
+    $orphanedFile = $archivePath.'/db-snapshot-daily-v8-20240913.sql.gz';
     $archiveDisk->put($orphanedFile, 'fake snapshot content');
 
     // Create a file that matches our current "daily" plan pattern
-    $validFile = $archivePath . '/db-snapshot-daily-20240913.sql.gz';
+    $validFile = $archivePath.'/db-snapshot-daily-20240913.sql.gz';
     $archiveDisk->put($validFile, 'fake snapshot content');
 
     // Configure only the "daily" plan (simulating that "daily-v8" was removed)
@@ -166,7 +166,7 @@ test('file template with hour format', function () {
     $snapshot = $snapshotPlan->create();
 
     // Expected filename should include the hour
-    $expectedFileName = 'db-snapshot-hourly-' . date('YmdH') . '.sql.gz';
+    $expectedFileName = 'db-snapshot-hourly-'.date('YmdH').'.sql.gz';
     expect($snapshot->fileName)->toBe($expectedFileName);
 
     // Test that the file was created
@@ -187,7 +187,7 @@ test('file template with hour and minute format', function () {
     $snapshotPlan = new SnapshotPlan('precise', $config);
     $snapshot = $snapshotPlan->create();
 
-    $expectedFileName = 'db-snapshot-' . date('YmdHi') . '.sql.gz';
+    $expectedFileName = 'db-snapshot-'.date('YmdHi').'.sql.gz';
     expect($snapshot->fileName)->toBe($expectedFileName);
 
     // Test parsing
@@ -202,20 +202,20 @@ test('loading snapshots with hour format from disk', function () {
     $archivePath = config('db-snapshots.filesystem.archive_path');
 
     // Simulate snapshots from different hours
-    $archiveDisk->put($archivePath . '/db-snapshot-hourly-2024091310.sql.gz', 'fake snapshot 10am');
-    $archiveDisk->put($archivePath . '/db-snapshot-hourly-2024091314.sql.gz', 'fake snapshot 2pm');
-    $archiveDisk->put($archivePath . '/db-snapshot-hourly-2024091318.sql.gz', 'fake snapshot 6pm');
+    $archiveDisk->put($archivePath.'/db-snapshot-hourly-2024091310.sql.gz', 'fake snapshot 10am');
+    $archiveDisk->put($archivePath.'/db-snapshot-hourly-2024091314.sql.gz', 'fake snapshot 2pm');
+    $archiveDisk->put($archivePath.'/db-snapshot-hourly-2024091318.sql.gz', 'fake snapshot 6pm');
 
     // Configure the plan
     config()->set('db-snapshots.plans', [
         'hourly' => [
-            'connection'    => 'mysql',
+            'connection' => 'mysql',
             'file_template' => 'db-snapshot-hourly-{date:YmdH}',
-            'dump_options'  => '--single-transaction',
-            'keep_last'     => 2,
+            'dump_options' => '--single-transaction',
+            'keep_last' => 2,
             'environment_locks' => [
                 'create' => 'production',
-                'load'   => 'local',
+                'load' => 'local',
             ],
         ],
     ]);
@@ -260,13 +260,13 @@ test('file template with date and time separated', function () {
 });
 
 test('gzip failure cleans up partial files', function () {
-    config()->set('db-snapshots.utilities.gzip', __DIR__ . '/fixtures/fakegzip-failure');
+    config()->set('db-snapshots.utilities.gzip', __DIR__.'/fixtures/fakegzip-failure');
 
     $snapshotPlan = new SnapshotPlan('daily', defaultDailyConfig());
 
     $localDisk = Storage::disk(config('db-snapshots.filesystem.local_disk'));
     $localPath = config('db-snapshots.filesystem.local_path');
-    $fileName = 'db-snapshot-daily-' . date('Ymd') . '.sql';
+    $fileName = 'db-snapshot-daily-'.date('Ymd').'.sql';
 
     try {
         $snapshotPlan->create();
@@ -282,13 +282,13 @@ test('gzip failure cleans up partial files', function () {
 });
 
 test('mysqldump failure cleans up partial file', function () {
-    config()->set('db-snapshots.utilities.mysql.mysqldump', __DIR__ . '/fixtures/fakemysqldump-failure');
+    config()->set('db-snapshots.utilities.mysql.mysqldump', __DIR__.'/fixtures/fakemysqldump-failure');
 
     $snapshotPlan = new SnapshotPlan('daily', defaultDailyConfig());
 
     $localDisk = Storage::disk(config('db-snapshots.filesystem.local_disk'));
     $localPath = config('db-snapshots.filesystem.local_path');
-    $fileName = 'db-snapshot-daily-' . date('Ymd') . '.sql';
+    $fileName = 'db-snapshot-daily-'.date('Ymd').'.sql';
 
     try {
         $snapshotPlan->create();
@@ -313,12 +313,12 @@ test('recached flag forces download even with same date', function () {
     // Create a snapshot file on archive with specific content
     $fileName = 'db-snapshot-daily-20240913.sql.gz';
     $originalContent = 'original snapshot content';
-    $archiveDisk->put($archivePath . '/' . $fileName, $originalContent);
+    $archiveDisk->put($archivePath.'/'.$fileName, $originalContent);
 
     // Simulate a cached copy with different content
     $localDisk->makeDirectory($localPath);
     $cachedContent = 'old cached content';
-    $localDisk->put($localPath . '/' . $fileName, $cachedContent);
+    $localDisk->put($localPath.'/'.$fileName, $cachedContent);
 
     // Configure plan
     config()->set('db-snapshots.plans', [
@@ -333,8 +333,8 @@ test('recached flag forces download even with same date', function () {
     expect($snapshot)->not->toBeNull();
 
     // Verify cached file exists with old content
-    expect($localDisk->exists($localPath . '/' . $fileName))->toBeTrue();
-    expect($localDisk->get($localPath . '/' . $fileName))->toBe($cachedContent);
+    expect($localDisk->exists($localPath.'/'.$fileName))->toBeTrue();
+    expect($localDisk->get($localPath.'/'.$fileName))->toBe($cachedContent);
 
     // Simulate --recached behavior: forceDownload=true
     $downloadInfo = $snapshot->download(useLocalCopy: false, forceDownload: true);
@@ -343,5 +343,5 @@ test('recached flag forces download even with same date', function () {
     expect($downloadInfo['downloaded'])->toBeTrue();
 
     // Verify the local file now has the new content from archive
-    expect($localDisk->get($localPath . '/' . $fileName))->toBe($originalContent);
+    expect($localDisk->get($localPath.'/'.$fileName))->toBe($originalContent);
 });

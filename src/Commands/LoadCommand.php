@@ -38,14 +38,14 @@ class LoadCommand extends Command
             $cached = $this->option('cached');
             $recached = $this->option('recached');
             $cacheByDefault = config('db-snapshots.cache_by_default', false);
-            $useLocalCopy = $cached && !$recached;
+            $useLocalCopy = $cached && ! $recached;
             $keepLocalCopy = $cached || $recached || $cacheByDefault;
             $forceDownload = $recached;
             $skipPostCommands = $this->option('skip-post-commands');
 
             $noDrop = $this->option('no-drop');
 
-            if (!$noDrop) {
+            if (! $noDrop) {
                 $this->info('Dropping existing tables');
                 $planGroup->dropTables();
             }
@@ -62,7 +62,7 @@ class LoadCommand extends Command
             );
 
             // Execute plan group post-load commands
-            if (!$skipPostCommands) {
+            if (! $skipPostCommands) {
                 $this->newLine();
                 $this->info('Executing plan group post-load SQL commands...');
 
@@ -106,18 +106,18 @@ class LoadCommand extends Command
         $snapshotPlans = SnapshotPlan::all();
 
         /** @var SnapshotPlan $snapshotPlan */
-        $snapshotPlan = (!$plan)
+        $snapshotPlan = (! $plan)
             ? $snapshotPlans->first()
             : $snapshotPlans->firstWhere('name', $plan);
 
-        if (!$snapshotPlan) {
+        if (! $snapshotPlan) {
             $this->error('Could not find a suitable plan to load from.');
 
             return;
         }
 
-        if (!$snapshotPlan->canLoad()) {
-            $this->error('Cannot load in this environment (' . app()->environment() . ')');
+        if (! $snapshotPlan->canLoad()) {
+            $this->error('Cannot load in this environment ('.app()->environment().')');
 
             return;
         }
@@ -129,7 +129,7 @@ class LoadCommand extends Command
             ? ($snapshotPlan->snapshots[$file - 1] ?? null)
             : $snapshotPlan->snapshots->firstWhere('fileName', $file);
 
-        if (!$snapshot) {
+        if (! $snapshot) {
             $this->error(
                 is_numeric($file)
                     ? "Snapshot at index $file does not exist"
@@ -145,13 +145,13 @@ class LoadCommand extends Command
         $recached = $this->option('recached');
         $cacheByDefault = config('db-snapshots.cache_by_default', false);
 
-        $useLocalCopy = $cached && !$recached;
+        $useLocalCopy = $cached && ! $recached;
         $keepLocalCopy = $cached || $recached || $cacheByDefault;
         $forceDownload = $recached;
 
         $noDrop = $this->option('no-drop');
 
-        if (!$noDrop) {
+        if (! $noDrop) {
             $this->info('Dropping existing tables');
 
             $snapshotPlan->dropLocalTables();
@@ -160,9 +160,9 @@ class LoadCommand extends Command
         // Setup progress bar if downloading
         $progressBar = null;
 
-        if (!$useLocalCopy || !$snapshot->existsLocally()) {
+        if (! $useLocalCopy || ! $snapshot->existsLocally()) {
             $snapshot->displayProgressUsing(function ($downloaded, $total) use (&$progressBar) {
-                if (!$progressBar) {
+                if (! $progressBar) {
                     $progressBar = $this->output->createProgressBar($total);
                     $progressBar->setFormat('very_verbose');
                 }
@@ -185,7 +185,7 @@ class LoadCommand extends Command
 
         // Provide cache feedback
         if ($cacheInfo['used_cache']) {
-            $this->info('Using cached snapshot' . ($cacheInfo['smart_cache_enabled'] ? ' (validated by smart cache)' : ''));
+            $this->info('Using cached snapshot'.($cacheInfo['smart_cache_enabled'] ? ' (validated by smart cache)' : ''));
         } elseif ($cacheInfo['cache_was_stale']) {
             $this->info('Downloaded fresh snapshot (cached copy was stale)');
         }
@@ -195,7 +195,7 @@ class LoadCommand extends Command
         }
 
         // Execute post-load commands
-        if (!$this->option('skip-post-commands')) {
+        if (! $this->option('skip-post-commands')) {
             $this->newLine();
             $this->info('Executing post-load SQL commands...');
 

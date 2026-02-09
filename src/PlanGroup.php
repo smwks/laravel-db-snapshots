@@ -69,7 +69,7 @@ class PlanGroup
         $this->plans = collect($this->planNames)->map(function ($planName) use ($allPlans, $name) {
             $plan = $allPlans->firstWhere('name', $planName);
 
-            if (!$plan) {
+            if (! $plan) {
                 throw new RuntimeException("Plan group '{$name}' references non-existent plan '{$planName}'");
             }
 
@@ -87,7 +87,7 @@ class PlanGroup
         return $this->plans->map(function (SnapshotPlan $plan) {
             $this->callMessaging("Creating snapshot for plan: {$plan->name}");
 
-            if (!$plan->canCreate()) {
+            if (! $plan->canCreate()) {
                 $this->callMessaging('  Skipped (environment lock)');
 
                 return null;
@@ -117,13 +117,13 @@ class PlanGroup
         foreach ($this->plans as $plan) {
             $this->callMessaging("Loading plan: {$plan->name}");
 
-            if (!$plan->canLoad()) {
+            if (! $plan->canLoad()) {
                 $this->callMessaging('  Skipped (environment lock)');
 
                 $results->push([
-                    'plan'    => $plan->name,
+                    'plan' => $plan->name,
                     'success' => false,
-                    'reason'  => 'environment_lock',
+                    'reason' => 'environment_lock',
                 ]);
 
                 continue;
@@ -131,13 +131,13 @@ class PlanGroup
 
             $snapshot = $plan->snapshots->first();
 
-            if (!$snapshot) {
+            if (! $snapshot) {
                 $this->callMessaging('  Skipped (no snapshots available)');
 
                 $results->push([
-                    'plan'    => $plan->name,
+                    'plan' => $plan->name,
                     'success' => false,
-                    'reason'  => 'no_snapshots',
+                    'reason' => 'no_snapshots',
                 ]);
 
                 continue;
@@ -151,25 +151,25 @@ class PlanGroup
 
                 $snapshot->load($useLocalCopy, $keepLocalCopy, $forceDownload);
 
-                if (!$skipPostCommands) {
+                if (! $skipPostCommands) {
                     $plan->executePostLoadCommands();
                 }
 
                 $this->callMessaging("  Loaded: {$snapshot->fileName}");
 
                 $results->push([
-                    'plan'     => $plan->name,
-                    'success'  => true,
+                    'plan' => $plan->name,
+                    'success' => true,
                     'snapshot' => $snapshot->fileName,
                 ]);
             } catch (Exception $e) {
                 $this->callMessaging("  Failed: {$e->getMessage()}");
 
                 $results->push([
-                    'plan'    => $plan->name,
+                    'plan' => $plan->name,
                     'success' => false,
-                    'reason'  => 'exception',
-                    'error'   => $e->getMessage(),
+                    'reason' => 'exception',
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -194,21 +194,21 @@ class PlanGroup
 
         foreach ($this->postLoadSqls as $command) {
             try {
-                $this->callMessaging('Running SQL: ' . $command);
+                $this->callMessaging('Running SQL: '.$command);
 
                 DB::connection($connection)->statement($command);
 
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'plan_group',
+                    'type' => 'plan_group',
                     'success' => true,
                 ];
             } catch (Exception $e) {
                 $results[] = [
                     'command' => $command,
-                    'type'    => 'plan_group',
+                    'type' => 'plan_group',
                     'success' => false,
-                    'error'   => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ];
             }
         }
@@ -229,7 +229,7 @@ class PlanGroup
 
         // Drop tables once per unique connection
         foreach ($uniqueConnections as $connection) {
-            $this->callMessaging('Dropping tables on connection: ' . $connection);
+            $this->callMessaging('Dropping tables on connection: '.$connection);
 
             DB::connection($connection)
                 ->getSchemaBuilder()

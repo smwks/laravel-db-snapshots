@@ -8,7 +8,7 @@ class DbSnapshotsServiceProvider extends ServiceProvider
 {
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/db-snapshots.php', 'db-snapshots');
+        $this->mergeConfigFrom(__DIR__.'/../config/db-snapshots.php', 'db-snapshots');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -24,7 +24,7 @@ class DbSnapshotsServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->publishes([
-            __DIR__ . '/../config/db-snapshots.php' => config_path('db-snapshots.php'),
+            __DIR__.'/../config/db-snapshots.php' => config_path('db-snapshots.php'),
         ], 'config');
     }
 }

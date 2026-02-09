@@ -21,12 +21,12 @@ class PostgresDriver implements DatabaseDriver
         $commands = [];
 
         $ignoreTablesOption = '';
-        if ($ignoreTables && !$tables) {
+        if ($ignoreTables && ! $tables) {
             $ignoreTablesOption = implode(' ', array_map(fn ($table) => "--exclude-table={$table}", $ignoreTables));
         }
 
         $schemaOnlyExcludeOption = '';
-        if (!$tables && $schemaOnlyTables) {
+        if (! $tables && $schemaOnlyTables) {
             $schemaOnlyExcludeOption = implode(' ', array_map(fn ($table) => "--exclude-table={$table}", $schemaOnlyTables));
         }
 
@@ -37,11 +37,11 @@ class PostgresDriver implements DatabaseDriver
 
         // Data + schema dump
         $command = "PGPASSFILE={credentials_file} {$pgDumpUtil}";
-        $command .= " -h {host} -p {port} -U {username}";
+        $command .= ' -h {host} -p {port} -U {username}';
 
         $parts = array_filter([$dumpOptions, $ignoreTablesOption, $schemaOnlyExcludeOption, $tableOptions ?? '']);
         if ($parts) {
-            $command .= ' ' . implode(' ', $parts);
+            $command .= ' '.implode(' ', $parts);
         }
 
         $command .= " {$database} > {$outputFile}";
@@ -52,12 +52,12 @@ class PostgresDriver implements DatabaseDriver
             $schemaOnlyTableOptions = implode(' ', array_map(fn ($table) => "-t {$table}", $schemaOnlyTables));
 
             $command = "PGPASSFILE={credentials_file} {$pgDumpUtil}";
-            $command .= " -h {host} -p {port} -U {username}";
-            $command .= " --schema-only";
+            $command .= ' -h {host} -p {port} -U {username}';
+            $command .= ' --schema-only';
 
             $parts = array_filter([$dumpOptions, $schemaOnlyTableOptions]);
             if ($parts) {
-                $command .= ' ' . implode(' ', $parts);
+                $command .= ' '.implode(' ', $parts);
             }
 
             $command .= " {$database} >> {$outputFile}";

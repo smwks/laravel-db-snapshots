@@ -10,7 +10,7 @@ trait HasCommandHelpers
     {
         if (count(SnapshotPlan::$unacceptedFiles) > 0) {
             $this->newLine();
-            $this->warn('Warning: Found ' . count(SnapshotPlan::$unacceptedFiles) . ' file(s) in the archive that do not match any configured plan:');
+            $this->warn('Warning: Found '.count(SnapshotPlan::$unacceptedFiles).' file(s) in the archive that do not match any configured plan:');
 
             foreach (SnapshotPlan::$unacceptedFiles as $unacceptedFile) {
                 $this->line("  {$unacceptedFile}");

@@ -8,7 +8,7 @@ use SMWks\LaravelDbSnapshots\SnapshotPlan;
 // --- MysqlDriver tests ---
 
 test('mysql driver builds dump command', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -28,7 +28,7 @@ test('mysql driver builds dump command', function () {
 });
 
 test('mysql driver builds dump command with tables', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -44,7 +44,7 @@ test('mysql driver builds dump command with tables', function () {
 });
 
 test('mysql driver builds dump command with ignore tables', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -61,7 +61,7 @@ test('mysql driver builds dump command with ignore tables', function () {
 });
 
 test('mysql driver builds dump command with schema only tables', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -81,7 +81,7 @@ test('mysql driver builds dump command with schema only tables', function () {
 });
 
 test('mysql driver builds load command', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
 
     $command = $driver->buildLoadCommand('/tmp/dump.sql.gz', 'mydb');
 
@@ -91,12 +91,12 @@ test('mysql driver builds load command', function () {
 });
 
 test('mysql driver writes and cleans up credentials', function () {
-    $driver = new MysqlDriver();
+    $driver = new MysqlDriver;
     $disk = Storage::disk('local');
 
     $dbConfig = [
-        'host'     => '127.0.0.1',
-        'port'     => '3306',
+        'host' => '127.0.0.1',
+        'port' => '3306',
         'database' => 'testdb',
         'username' => 'root',
         'password' => 'secret',
@@ -129,7 +129,7 @@ test('mysql driver utilities list', function () {
 // --- PostgresDriver tests ---
 
 test('postgres driver builds dump command', function () {
-    $driver = new PostgresDriver();
+    $driver = new PostgresDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -153,7 +153,7 @@ test('postgres driver builds dump command', function () {
 });
 
 test('postgres driver builds dump command with ignore tables', function () {
-    $driver = new PostgresDriver();
+    $driver = new PostgresDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -170,7 +170,7 @@ test('postgres driver builds dump command with ignore tables', function () {
 });
 
 test('postgres driver builds dump command with schema only tables', function () {
-    $driver = new PostgresDriver();
+    $driver = new PostgresDriver;
 
     $commands = $driver->buildDumpCommand(
         '/tmp/output.sql',
@@ -190,7 +190,7 @@ test('postgres driver builds dump command with schema only tables', function () 
 });
 
 test('postgres driver builds load command', function () {
-    $driver = new PostgresDriver();
+    $driver = new PostgresDriver;
 
     $command = $driver->buildLoadCommand('/tmp/dump.sql.gz', 'mydb');
 
@@ -203,12 +203,12 @@ test('postgres driver builds load command', function () {
 });
 
 test('postgres driver writes and cleans up credentials', function () {
-    $driver = new PostgresDriver();
+    $driver = new PostgresDriver;
     $disk = Storage::disk('local');
 
     $dbConfig = [
-        'host'     => '127.0.0.1',
-        'port'     => '5432',
+        'host' => '127.0.0.1',
+        'port' => '5432',
         'database' => 'testdb',
         'username' => 'postgres',
         'password' => 'secret',
@@ -253,9 +253,9 @@ test('auto-detection picks mysql driver for mysql connection', function () {
 
 test('auto-detection picks postgres driver for pgsql connection', function () {
     config()->set('database.connections.pgsql', [
-        'driver'   => 'pgsql',
-        'host'     => '127.0.0.1',
-        'port'     => '5432',
+        'driver' => 'pgsql',
+        'host' => '127.0.0.1',
+        'port' => '5432',
         'database' => 'testdb',
         'username' => 'postgres',
         'password' => 'secret',
@@ -272,7 +272,7 @@ test('auto-detection picks postgres driver for pgsql connection', function () {
 
 test('auto-detection throws for unsupported driver', function () {
     config()->set('database.connections.sqlite', [
-        'driver'   => 'sqlite',
+        'driver' => 'sqlite',
         'database' => ':memory:',
     ]);
 
@@ -287,15 +287,15 @@ test('auto-detection throws for unsupported driver', function () {
 
 test('postgres driver creates snapshot with fakepgdump', function () {
     config()->set('database.connections.pgsql', [
-        'driver'   => 'pgsql',
-        'host'     => '127.0.0.1',
-        'port'     => '5432',
+        'driver' => 'pgsql',
+        'host' => '127.0.0.1',
+        'port' => '5432',
         'database' => 'testdb',
         'username' => 'postgres',
         'password' => 'secret',
     ]);
 
-    config()->set('db-snapshots.utilities.pgsql.pg_dump', __DIR__ . '/fixtures/fakepgdump');
+    config()->set('db-snapshots.utilities.pgsql.pg_dump', __DIR__.'/fixtures/fakepgdump');
 
     $config = defaultDailyConfig();
     $config['connection'] = 'pgsql';
@@ -304,7 +304,7 @@ test('postgres driver creates snapshot with fakepgdump', function () {
     $snapshotPlan = new SnapshotPlan('daily', $config);
     $snapshot = $snapshotPlan->create();
 
-    $expectedFileName = 'db-snapshot-pg-daily-' . date('Ymd') . '.sql.gz';
+    $expectedFileName = 'db-snapshot-pg-daily-'.date('Ymd').'.sql.gz';
     expect($snapshot->fileName)->toBe($expectedFileName);
 
     $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));

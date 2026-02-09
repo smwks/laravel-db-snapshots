@@ -24,7 +24,7 @@ class Snapshot
 
     public function getSize(): int
     {
-        if (!isset($this->size)) {
+        if (! isset($this->size)) {
             $this->size = $this->snapshotPlan->archiveDisk->size(
                 "{$this->snapshotPlan->archivePath}/{$this->fileName}"
             );
@@ -42,12 +42,12 @@ class Snapshot
             $bytes /= 1024;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 
     public function removeLocalCopy(): void
     {
-        if (!$this->existsLocally()) {
+        if (! $this->existsLocally()) {
             return;
         }
 
@@ -64,18 +64,18 @@ class Snapshot
         if ($forceDownload && $this->existsLocally()) {
             $this->removeLocalCopy();
             $cacheWasStale = true;
-        } elseif ($useLocalCopy && $this->existsLocally() && !$this->shouldRefreshCache()) {
+        } elseif ($useLocalCopy && $this->existsLocally() && ! $this->shouldRefreshCache()) {
             // Honor explicit useLocalCopy flag
             return [
-                'downloaded'      => false,
+                'downloaded' => false,
                 'cache_was_stale' => false,
                 'had_cached_copy' => true,
             ];
-        } elseif ($smartCache && !$useLocalCopy && $this->existsLocally()) {
+        } elseif ($smartCache && ! $useLocalCopy && $this->existsLocally()) {
             // Smart cache: check if we need to refresh
-            if (!$this->shouldRefreshCache()) {
+            if (! $this->shouldRefreshCache()) {
                 return [
-                    'downloaded'      => false,
+                    'downloaded' => false,
                     'cache_was_stale' => false,
                     'had_cached_copy' => true,
                 ];
@@ -96,7 +96,7 @@ class Snapshot
             // Open streams
             $sourceStream = $this->snapshotPlan->archiveDisk->readStream($archivePath);
 
-            if (!$this->snapshotPlan->localDisk->exists($this->snapshotPlan->localPath)) {
+            if (! $this->snapshotPlan->localDisk->exists($this->snapshotPlan->localPath)) {
                 $this->snapshotPlan->localDisk->makeDirectory($this->snapshotPlan->localPath);
             }
 
@@ -106,7 +106,7 @@ class Snapshot
             $downloaded = 0;
             $bufferSize = 8192; // 8KB chunks
 
-            while (!feof($sourceStream)) {
+            while (! feof($sourceStream)) {
                 $buffer = fread($sourceStream, $bufferSize);
                 fwrite($destStream, $buffer);
                 $downloaded += strlen($buffer);
@@ -125,7 +125,7 @@ class Snapshot
         }
 
         return [
-            'downloaded'      => true,
+            'downloaded' => true,
             'cache_was_stale' => $cacheWasStale,
             'had_cached_copy' => $hadCachedCopy,
         ];
@@ -136,10 +136,10 @@ class Snapshot
         $downloadInfo = $this->download($useLocalCopy, $forceDownload);
 
         $cacheInfo = [
-            'downloaded'          => $downloadInfo['downloaded'],
-            'used_cache'          => !$downloadInfo['downloaded'],
-            'cache_was_stale'     => $downloadInfo['cache_was_stale'],
-            'had_cached_copy'     => $downloadInfo['had_cached_copy'],
+            'downloaded' => $downloadInfo['downloaded'],
+            'used_cache' => ! $downloadInfo['downloaded'],
+            'cache_was_stale' => $downloadInfo['cache_was_stale'],
+            'had_cached_copy' => $downloadInfo['had_cached_copy'],
             'smart_cache_enabled' => config('db-snapshots.cache_by_default', false),
         ];
 
@@ -157,7 +157,7 @@ class Snapshot
         );
 
         // delete local
-        if (!$keepLocalCopy) {
+        if (! $keepLocalCopy) {
             $this->removeLocalCopy();
         }
 
@@ -175,14 +175,14 @@ class Snapshot
 
     protected function shouldRefreshCache(): bool
     {
-        if (!$this->existsLocally()) {
+        if (! $this->existsLocally()) {
             return true; // No local copy, must download
         }
 
         // Check if there's a newer snapshot available by comparing filename dates
         $newestSnapshot = $this->snapshotPlan->snapshots->first();
 
-        if (!$newestSnapshot) {
+        if (! $newestSnapshot) {
             return false; // No newer snapshot available
         }
 
