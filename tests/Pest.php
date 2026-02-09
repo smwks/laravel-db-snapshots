@@ -7,13 +7,13 @@ uses(Orchestra\Testbench\TestCase::class)->in(__DIR__);
 
 uses()
     ->beforeEach(function () {
-        config()->set('filesystems.disks.local.root', __DIR__ . '/fixtures/local-filesystem/');
+        config()->set('filesystems.disks.local.root', __DIR__.'/fixtures/local-filesystem/');
 
-        config()->set('db-snapshots', include __DIR__ . '/../config/db-snapshots.php');
+        config()->set('db-snapshots', include __DIR__.'/../config/db-snapshots.php');
 
         config()->set('db-snapshots.filesystem.archive_disk', 'local');
         config()->set('db-snapshots.filesystem.archive_path', 'cloud-snapshots');
-        config()->set('db-snapshots.utilities.mysql.mysqldump', __DIR__ . '/fixtures/fakemysqldump');
+        config()->set('db-snapshots.utilities.mysql.mysqldump', __DIR__.'/fixtures/fakemysqldump');
 
         cleanupFiles();
 
@@ -27,13 +27,13 @@ uses()
 function defaultDailyConfig(): array
 {
     return [
-        'connection'    => 'mysql',
+        'connection' => 'mysql',
         'file_template' => 'db-snapshot-daily-{date:Ymd}',
-        'dump_options'  => '--single-transaction',
-        'keep_last'     => 2,
+        'dump_options' => '--single-transaction',
+        'keep_last' => 2,
         'environment_locks' => [
             'create' => 'production',
-            'load'   => 'local',
+            'load' => 'local',
         ],
     ];
 }

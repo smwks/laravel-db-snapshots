@@ -21,7 +21,7 @@ class CreateCommand extends Command
         $plan = $this->argument('plan');
         $cleanup = $this->option('cleanup', false);
 
-        if (!$plan) {
+        if (! $plan) {
             $plans = config('db-snapshots.plans');
             $plan = key($plans);
         }
@@ -58,7 +58,7 @@ class CreateCommand extends Command
         // Original single plan logic
         $snapshotPlans = SnapshotPlan::all();
 
-        if (!isset($snapshotPlans[$plan])) {
+        if (! isset($snapshotPlans[$plan])) {
             $this->error("Plan with name $plan does not appear to exist in db-snapshots.plans");
 
             return;
@@ -67,8 +67,8 @@ class CreateCommand extends Command
         /** @var SnapshotPlan $snapshotPlan */
         $snapshotPlan = $snapshotPlans[$plan];
 
-        if (!$snapshotPlan->canCreate()) {
-            $this->error('Cannot create in this environment (' . app()->environment() . ')');
+        if (! $snapshotPlan->canCreate()) {
+            $this->error('Cannot create in this environment ('.app()->environment().')');
 
             return;
         }

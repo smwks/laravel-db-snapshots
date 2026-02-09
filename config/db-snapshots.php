@@ -5,8 +5,8 @@ return [
     'cache_by_default' => false,
 
     'filesystem' => [
-        'local_disk'   => 'local',
-        'local_path'   => 'db-snapshots',
+        'local_disk' => 'local',
+        'local_path' => 'db-snapshots',
         'archive_disk' => 'cloud',
         'archive_path' => 'db-snapshots',
     ],
@@ -29,21 +29,21 @@ return [
         // ],
     ],
 
-    'plans'      => [
+    'plans' => [
         'daily' => [
-            'connection'         => null,
-            'file_template'      => 'db-snapshot-daily-{date:Ymd}',
+            'connection' => null,
+            'file_template' => 'db-snapshot-daily-{date:Ymd}',
             // MySQL 8.0+: '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0'
             // MariaDB:    '--single-transaction --no-tablespaces'
             // PostgreSQL: '--no-owner --no-acl'
-            'dump_options'       => '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0',
+            'dump_options' => '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0',
             'schema_only_tables' => ['failed_jobs'],
-            'tables'             => [],
-            'ignore_tables'      => [],
-            'keep_last'          => 1,
-            'environment_locks'  => [
+            'tables' => [],
+            'ignore_tables' => [],
+            'keep_last' => 1,
+            'environment_locks' => [
                 'create' => 'production',
-                'load'   => 'local',
+                'load' => 'local',
             ],
             // Plan-specific SQL commands to run after loading this plan
             'post_load_sqls' => [
@@ -52,14 +52,14 @@ return [
         ],
     ],
 
-    'utilities'  => [
+    'utilities' => [
         'mysql' => [
             'mysqldump' => 'mysqldump',
-            'mysql'     => 'mysql',
+            'mysql' => 'mysql',
         ],
         'pgsql' => [
             'pg_dump' => 'pg_dump',
-            'psql'    => 'psql',
+            'psql' => 'psql',
         ],
         'zcat' => 'zcat',
         'gzip' => 'gzip',

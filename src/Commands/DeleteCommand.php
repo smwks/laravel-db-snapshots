@@ -23,7 +23,7 @@ class DeleteCommand extends Command
         /** @var SnapshotPlan $snapshotPlan */
         $snapshotPlan = SnapshotPlan::all()->firstWhere('name', $plan);
 
-        if (!$snapshotPlan) {
+        if (! $snapshotPlan) {
             $this->error("Plan by $plan does not exist.");
 
             return;
@@ -33,7 +33,7 @@ class DeleteCommand extends Command
             ? ($snapshotPlan->snapshots[$file - 1] ?? null)
             : $snapshotPlan->snapshots->firstWhere('fileName', $file);
 
-        if (!$snapshot) {
+        if (! $snapshot) {
             $this->error(
                 is_numeric($file)
                     ? "Snapshot at index $file does not exist"

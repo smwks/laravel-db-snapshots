@@ -35,7 +35,7 @@ test('find returns null when plan group does not exist', function () {
 test('find returns plan group when it exists', function () {
     config()->set('db-snapshots.plan_groups', [
         'daily-group' => [
-            'plans'          => ['daily'],
+            'plans' => ['daily'],
             'post_load_sqls' => ['SELECT 1'],
         ],
     ]);

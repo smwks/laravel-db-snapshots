@@ -36,7 +36,7 @@ class ListCommand extends Command
         $this->newLine();
 
         $snapshotPlans->each(function (SnapshotPlan $snapshotPlan) {
-            $this->info('Plan: ' . $snapshotPlan->name);
+            $this->info('Plan: '.$snapshotPlan->name);
             $this->newLine();
 
             $snapshots = $snapshotPlan->snapshots;
@@ -79,7 +79,7 @@ class ListCommand extends Command
 
             $cachedRows = [];
             foreach ($files as $file) {
-                if (!Str::startsWith($file, $localPath)) {
+                if (! Str::startsWith($file, $localPath)) {
                     continue;
                 }
 
@@ -103,7 +103,7 @@ class ListCommand extends Command
             $this->newLine();
 
             $planGroups->each(
-                fn ($planGroup) => $this->line("  <fg=cyan>{$planGroup->name}</> → [" . implode(', ', $planGroup->planNames) . ']')
+                fn ($planGroup) => $this->line("  <fg=cyan>{$planGroup->name}</> → [".implode(', ', $planGroup->planNames).']')
             );
         }
 
@@ -122,6 +122,6 @@ class ListCommand extends Command
             $bytes /= 1024;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 }

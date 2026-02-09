@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Storage;
 use SMWks\LaravelDbSnapshots\PlanGroup;
 use SMWks\LaravelDbSnapshots\SnapshotPlan;
 
@@ -178,7 +177,7 @@ test('plan group execute post load commands triggers messaging', function () {
 
     config()->set('db-snapshots.plan_groups', [
         'all' => [
-            'plans'          => ['daily'],
+            'plans' => ['daily'],
             'post_load_sqls' => [
                 'SET FOREIGN_KEY_CHECKS=0',
             ],
@@ -213,7 +212,7 @@ test('callbacks are optional', function () {
 
 test('messaging callback propagates to child plans', function () {
     config()->set('db-snapshots.plans', [
-        'daily'   => defaultDailyConfig(),
+        'daily' => defaultDailyConfig(),
         'monthly' => defaultDailyConfig(),
     ]);
 
