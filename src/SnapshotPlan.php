@@ -66,7 +66,7 @@ class SnapshotPlan
         $snapshotPlanConfigs = config('db-snapshots.plans', []);
 
         if (count($snapshotPlanConfigs) === 0) {
-            throw new \RuntimeException('db-snapshots.plans does not contain any configured snapshot plans');
+            throw new RuntimeException('db-snapshots.plans does not contain any configured snapshot plans');
         }
 
         if (isset($snapshotPlanConfigs['cached'])) {

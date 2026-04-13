@@ -1,9 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Storage;
+use Orchestra\Testbench\TestCase;
 use SMWks\LaravelDbSnapshots\SnapshotPlan;
 
-uses(Orchestra\Testbench\TestCase::class)->in(__DIR__);
+uses(TestCase::class)->in(__DIR__);
 
 uses()
     ->beforeEach(function () {
