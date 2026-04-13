@@ -5,9 +5,9 @@ return [
     'cache_by_default' => false,
 
     'filesystem' => [
-        'local_disk' => 'local',
+        'local_disk' => env('DB_SNAPSHOTS_LOCAL_DISK', 'local'),
         'local_path' => 'db-snapshots',
-        'archive_disk' => 'cloud',
+        'archive_disk' => env('DB_SNAPSHOTS_ARCHIVE_DISK', 'private'),
         'archive_path' => 'db-snapshots',
     ],
 
@@ -33,10 +33,11 @@ return [
         'daily' => [
             'connection' => null,
             'file_template' => 'db-snapshot-daily-{date:Ymd}',
-            // MySQL 8.0+: '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0'
-            // MariaDB:    '--single-transaction --no-tablespaces'
-            // PostgreSQL: '--no-owner --no-acl'
-            'dump_options' => '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0',
+            // platform specific reasonable dump_options:
+            // - MySQL 8.0+: '--single-transaction --no-tablespaces --set-gtid-purged=OFF --column-statistics=0'
+            // - MariaDB:    '--single-transaction --no-tablespaces'
+            // - PostgreSQL: '--no-owner --no-acl'
+            'dump_options' => '',
             'schema_only_tables' => ['failed_jobs'],
             'tables' => [],
             'ignore_tables' => [],
@@ -61,7 +62,7 @@ return [
             'pg_dump' => 'pg_dump',
             'psql' => 'psql',
         ],
-        'zcat' => 'zcat',
-        'gzip' => 'gzip',
+        'zcat' => env('DB_SNAPSHOTS_UTILITIES_ZCAT', 'zcat'),
+        'gzip' => env('DB_SNAPSHOTS_UTILITIES_GZIP', 'gzip'),
     ],
 ];
