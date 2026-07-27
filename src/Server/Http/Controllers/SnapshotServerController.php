@@ -33,6 +33,8 @@ class SnapshotServerController
 
     public function download(Request $request, string $project, string $plan, string $file)
     {
+        $this->assertSafeFileSegment($file);
+
         [$disk, $path] = $this->diskAndPath($project, $plan);
 
         $filePath = "{$path}/{$file}";
@@ -66,20 +68,38 @@ class SnapshotServerController
         $uploaded = $request->file('file');
         $fileName = $uploaded->getClientOriginalName();
 
-        $disk->put("{$path}/{$fileName}", fopen($uploaded->getRealPath(), 'r'));
-        $disk->put("{$path}/{$fileName}.json", $request->input('metadata'));
+        $fileStored = $disk->put("{$path}/{$fileName}", fopen($uploaded->getRealPath(), 'r'));
+
+        abort_if($fileStored === false, 500, 'Failed to store snapshot file');
+
+        $metadataStored = $disk->put("{$path}/{$fileName}.json", $request->input('metadata'));
+
+        abort_if($metadataStored === false, 500, 'Failed to store snapshot metadata');
 
         return response()->json(['file' => $fileName], 201);
     }
 
     public function destroy(Request $request, string $project, string $plan, string $file)
     {
+        $this->assertSafeFileSegment($file);
+
         [$disk, $path] = $this->diskAndPath($project, $plan);
 
         $disk->delete("{$path}/{$file}.json");
         $disk->delete("{$path}/{$file}");
 
         return response()->noContent();
+    }
+
+    /**
+     * Defensive backstop for the route constraints defined in routes.php:
+     * ensures a {file} route parameter can never escape the plan directory
+     * via path traversal segments, regardless of what the route file allows
+     * in the future.
+     */
+    protected function assertSafeFileSegment(string $file): void
+    {
+        abort_unless($file === basename(str_replace('\\', '/', $file)), 400, 'Invalid file segment');
     }
 
     protected function diskAndPath(string $project, string $plan): array

@@ -70,3 +70,42 @@ test('download returns 404 for a missing file', function () {
 
     $response->assertStatus(404);
 });
+
+test('download rejects a path-traversal file segment using backslash-encoded dot-dot', function () {
+    // A sibling project's file, sitting outside the 'my-app' project's own
+    // archive directory. If traversal succeeded, this is what would leak.
+    Storage::disk('local')->put('server-snapshots/other-app/daily/secret.sql.gz', 'other project bytes');
+
+    $response = $this->withToken('my-app-token')
+        ->get('/api/db-snapshots/my-app/daily/..%5C..%5Cother-app%5Cdaily%5Csecret.sql.gz');
+
+    // Rejected by the route's character-class constraint (backslash isn't
+    // permitted in {file}) before the controller even runs; if the
+    // constraint were ever loosened, the controller's own basename() guard
+    // (SnapshotServerController::assertSafeFileSegment) would reject it too.
+    $response->assertStatus(404);
+    expect($response->getContent())->not->toBe('other project bytes');
+});
+
+test('destroy rejects a path-traversal file segment using backslash-encoded dot-dot', function () {
+    Storage::disk('local')->put('server-snapshots/other-app/daily/secret.sql.gz', 'other project bytes');
+
+    $response = $this->withToken('my-app-token')
+        ->delete('/api/db-snapshots/my-app/daily/..%5C..%5Cother-app%5Cdaily%5Csecret.sql.gz');
+
+    $response->assertStatus(404);
+
+    // The sibling project's file must survive untouched.
+    expect(Storage::disk('local')->exists('server-snapshots/other-app/daily/secret.sql.gz'))->toBeTrue();
+});
+
+test('index rejects a path-traversal plan segment of ".."', function () {
+    // A sibling project's directory listing, which a plan of ".." would
+    // otherwise expose (listing the parent "my-app" project directory).
+    Storage::disk('local')->put('server-snapshots/my-app/other-plan/secret.sql.gz', 'other plan bytes');
+
+    $response = $this->withToken('my-app-token')
+        ->getJson('/api/db-snapshots/my-app/..');
+
+    $response->assertStatus(404);
+});

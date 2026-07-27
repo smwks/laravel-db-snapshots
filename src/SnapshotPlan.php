@@ -192,11 +192,22 @@ class SnapshotPlan
         $archiveDiskConfig = config('db-snapshots.filesystem.archive_disk');
 
         if ($archiveDiskConfig === 'remote') {
+            $endpoint = config('db-snapshots.remote.endpoint');
+            $token = config('db-snapshots.remote.token');
+
+            if (empty($endpoint)) {
+                throw new RuntimeException('db-snapshots.remote.endpoint must be set when filesystem.archive_disk is "remote"');
+            }
+
+            if (empty($token)) {
+                throw new RuntimeException('db-snapshots.remote.token must be set when filesystem.archive_disk is "remote"');
+            }
+
             return new RemoteSnapshotStore(
-                endpoint: config('db-snapshots.remote.endpoint'),
+                endpoint: $endpoint,
                 project: config('db-snapshots.remote.project') ?? config('app.name'),
                 plan: $planName,
-                token: config('db-snapshots.remote.token'),
+                token: $token,
                 timeout: (int) config('db-snapshots.remote.timeout', 300),
             );
         }
@@ -317,7 +328,14 @@ class SnapshotPlan
         $metadata = $this->buildMetadata($localFileFullPath, $date, $dataTables, $durationSeconds, $driver);
 
         // store in archive (filesystem or remote) and remove from local
-        $this->archiveStore->publish($fileName, $localFileFullPath, $metadata);
+        try {
+            $this->archiveStore->publish($fileName, $localFileFullPath, $metadata);
+        } catch (RuntimeException $e) {
+            $this->localDisk->delete("{$this->localPath}/{$fileName}");
+
+            throw $e;
+        }
+
         $this->localDisk->delete("{$this->localPath}/{$fileName}");
 
         $snapshot = new Snapshot($fileName, $date, $this);

@@ -2,6 +2,10 @@
 
 namespace SMWks\LaravelDbSnapshots\Stores;
 
+use Closure;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -40,11 +44,10 @@ class RemoteSnapshotStore implements SnapshotStore
 
     public function delete(string $file): bool
     {
-        $response = $this->client()->delete("{$this->baseUrl()}/{$file}");
-
-        if (! $response->successful()) {
-            throw new RuntimeException("Failed to delete remote snapshot {$file}: {$response->status()} {$response->body()}");
-        }
+        $this->send(
+            fn (PendingRequest $client) => $client->delete("{$this->baseUrl()}/{$file}"),
+            "Failed to delete remote snapshot {$file}",
+        );
 
         $this->listCache = null;
 
@@ -67,28 +70,26 @@ class RemoteSnapshotStore implements SnapshotStore
 
     public function readStream(string $file)
     {
-        $response = $this->client()
-            ->withOptions(['stream' => true, 'allow_redirects' => true])
-            ->get("{$this->baseUrl()}/{$file}");
-
-        if (! $response->successful()) {
-            throw new RuntimeException("Failed to download remote snapshot {$file}: {$response->status()} {$response->body()}");
-        }
+        $response = $this->send(
+            fn (PendingRequest $client) => $client
+                ->withOptions(['stream' => true, 'allow_redirects' => true])
+                ->get("{$this->baseUrl()}/{$file}"),
+            "Failed to download remote snapshot {$file}",
+        );
 
         return $response->toPsrResponse()->getBody()->detach();
     }
 
     public function publish(string $file, string $localPath, array $metadata): void
     {
-        $response = $this->client()
-            ->attach('file', fopen($localPath, 'r'), $file)
-            ->post($this->baseUrl(), [
-                'metadata' => json_encode($metadata),
-            ]);
-
-        if (! $response->successful()) {
-            throw new RuntimeException("Failed to publish remote snapshot {$file}: {$response->status()} {$response->body()}");
-        }
+        $this->send(
+            fn (PendingRequest $client) => $client
+                ->attach('file', fopen($localPath, 'r'), $file)
+                ->post($this->baseUrl(), [
+                    'metadata' => json_encode($metadata),
+                ]),
+            "Failed to publish remote snapshot {$file}",
+        );
 
         $this->listCache = null;
     }
@@ -98,9 +99,31 @@ class RemoteSnapshotStore implements SnapshotStore
         return rtrim($this->endpoint, '/')."/{$this->project}/{$this->plan}";
     }
 
-    protected function client()
+    protected function client(): PendingRequest
     {
         return Http::withToken($this->token)->timeout($this->timeout);
+    }
+
+    /**
+     * Runs an HTTP call through the shared client, rewrapping any connection
+     * level failure (DNS, refused connection, timeout) as a RuntimeException
+     * so every failure mode from this store surfaces as one exception type,
+     * and centralizing the "non-successful response" -> RuntimeException
+     * check that was previously duplicated across every method here.
+     */
+    protected function send(Closure $callback, string $context): Response
+    {
+        try {
+            $response = $callback($this->client());
+        } catch (ConnectionException $e) {
+            throw new RuntimeException("{$context}: {$e->getMessage()}", 0, $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException("{$context}: {$response->status()} {$response->body()}");
+        }
+
+        return $response;
     }
 
     /**
@@ -112,11 +135,10 @@ class RemoteSnapshotStore implements SnapshotStore
             return $this->listCache;
         }
 
-        $response = $this->client()->get($this->baseUrl());
-
-        if (! $response->successful()) {
-            throw new RuntimeException("Failed to list remote snapshots for plan {$this->plan}: {$response->status()} {$response->body()}");
-        }
+        $response = $this->send(
+            fn (PendingRequest $client) => $client->get($this->baseUrl()),
+            "Failed to list remote snapshots for plan {$this->plan}",
+        );
 
         return $this->listCache = $response->json('snapshots', []);
     }

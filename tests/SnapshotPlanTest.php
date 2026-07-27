@@ -1,6 +1,7 @@
 <?php
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use SMWks\LaravelDbSnapshots\SnapshotPlan;
 
@@ -300,6 +301,52 @@ test('mysqldump failure cleans up partial file', function () {
 
     // Verify the partial SQL file was cleaned up
     expect($localDisk->exists("{$localPath}/{$fileName}"))->toBeFalse();
+});
+
+test('publish failure cleans up the local gzipped file', function () {
+    config()->set('db-snapshots.filesystem.archive_disk', 'remote');
+    config()->set('db-snapshots.remote.endpoint', 'https://hub.example.com/api/db-snapshots');
+    config()->set('db-snapshots.remote.project', 'my-app');
+    config()->set('db-snapshots.remote.token', 'secret-token');
+
+    Http::fake([
+        'hub.example.com/*' => Http::response(['message' => 'Internal Server Error'], 500),
+    ]);
+
+    $snapshotPlan = new SnapshotPlan('daily', defaultDailyConfig());
+
+    $localDisk = Storage::disk(config('db-snapshots.filesystem.local_disk'));
+    $localPath = config('db-snapshots.filesystem.local_path');
+    $fileName = 'db-snapshot-daily-'.date('Ymd').'.sql.gz';
+
+    try {
+        $snapshotPlan->create();
+        $this->fail('Expected RuntimeException was not thrown');
+    } catch (RuntimeException $e) {
+        expect($e->getMessage())->toContain('Failed to publish remote snapshot');
+    }
+
+    // The full .gz file must not be left behind as an orphan in the local
+    // cache directory after a failed publish to the remote transport.
+    expect($localDisk->exists("{$localPath}/{$fileName}"))->toBeFalse();
+});
+
+test('makeArchiveStore throws a descriptive RuntimeException when remote config is missing', function () {
+    config()->set('db-snapshots.filesystem.archive_disk', 'remote');
+    config()->set('db-snapshots.remote.endpoint', null);
+    config()->set('db-snapshots.remote.token', null);
+
+    expect(fn () => new SnapshotPlan('daily', defaultDailyConfig()))
+        ->toThrow(RuntimeException::class, 'db-snapshots.remote.endpoint must be set when filesystem.archive_disk is "remote"');
+});
+
+test('makeArchiveStore throws a descriptive RuntimeException when only the remote token is missing', function () {
+    config()->set('db-snapshots.filesystem.archive_disk', 'remote');
+    config()->set('db-snapshots.remote.endpoint', 'https://hub.example.com/api/db-snapshots');
+    config()->set('db-snapshots.remote.token', null);
+
+    expect(fn () => new SnapshotPlan('daily', defaultDailyConfig()))
+        ->toThrow(RuntimeException::class, 'db-snapshots.remote.token must be set when filesystem.archive_disk is "remote"');
 });
 
 test('recached flag forces download even with same date', function () {

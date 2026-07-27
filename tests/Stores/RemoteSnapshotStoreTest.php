@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use SMWks\LaravelDbSnapshots\Stores\RemoteSnapshotStore;
 
@@ -127,4 +128,36 @@ test('list failure throws a RuntimeException', function () {
     $store = makeRemoteStore();
 
     expect(fn () => $store->allFiles())->toThrow(RuntimeException::class, 'Failed to list remote snapshots');
+});
+
+test('a connection-level failure (DNS/refused/timeout) is rewrapped as a RuntimeException, not left as a ConnectionException', function () {
+    Http::fake(function () {
+        throw new ConnectionException('Connection refused');
+    });
+
+    $store = makeRemoteStore();
+
+    // allFiles() -> list() is the call site exercised here, but every
+    // method funnels through the same RemoteSnapshotStore::send() helper,
+    // so this proves the rewrapping for the whole class, not just list().
+    expect(fn () => $store->allFiles())
+        ->toThrow(RuntimeException::class, 'Failed to list remote snapshots for plan daily: Connection refused');
+});
+
+test('a connection-level failure during publish is rewrapped as a RuntimeException', function () {
+    Http::fake(function () {
+        throw new ConnectionException('Connection refused');
+    });
+
+    $localFile = tempnam(sys_get_temp_dir(), 'snapshot');
+    file_put_contents($localFile, 'fake snapshot bytes');
+
+    $store = makeRemoteStore();
+
+    try {
+        expect(fn () => $store->publish('db-snapshot-daily-20250209.sql.gz', $localFile, ['size' => 19]))
+            ->toThrow(RuntimeException::class, 'Failed to publish remote snapshot');
+    } finally {
+        unlink($localFile);
+    }
 });
