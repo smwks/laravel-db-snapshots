@@ -25,6 +25,13 @@ uses()
     })
     ->in(__DIR__);
 
+// Pest only auto-loads the root tests/Pest.php file — it does not discover
+// nested Pest.php files in subdirectories on its own. tests/Server/Pest.php
+// binds its own underlying test case (ServerTestCase) and hooks for
+// tests/Server/*, so it must be required explicitly here (after the uses()
+// calls above) for that directory-scoped configuration to take effect.
+require __DIR__.'/Server/Pest.php';
+
 function defaultDailyConfig(): array
 {
     return [

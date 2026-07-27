@@ -27,6 +27,22 @@ return [
         'timeout' => env('DB_SNAPSHOTS_REMOTE_TIMEOUT', 300),
     ],
 
+    // Exposes this app's snapshots over an authenticated API — either so
+    // another environment (e.g. local dev) can pull directly from this app,
+    // or so this app acts as a centralized hub for other projects.
+    'server' => [
+        'enabled' => env('DB_SNAPSHOTS_SERVER_ENABLED', false),
+        'route_prefix' => 'api/db-snapshots',
+        'projects' => [
+            // Example:
+            // 'my-app' => [
+            //     'token' => env('DB_SNAPSHOTS_SERVER_TOKEN_MY_APP'),
+            //     'archive_disk' => 's3',
+            //     'archive_path' => 'db-snapshots/my-app',
+            // ],
+        ],
+    ],
+
     // Global SQL commands to run after ANY snapshot load
     'post_load_sqls' => [
         // Example: 'SET GLOBAL time_zone = "+00:00"',

@@ -26,5 +26,9 @@ class DbSnapshotsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/db-snapshots.php' => config_path('db-snapshots.php'),
         ], 'config');
+
+        if (config('db-snapshots.server.enabled')) {
+            $this->loadRoutesFrom(__DIR__.'/Server/routes.php');
+        }
     }
 }
