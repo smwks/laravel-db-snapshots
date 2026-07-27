@@ -5,8 +5,10 @@ namespace SMWks\LaravelDbSnapshots;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -15,6 +17,8 @@ use SMWks\LaravelDbSnapshots\Commands\Concerns\HasOutputCallbacks;
 use SMWks\LaravelDbSnapshots\Drivers\DatabaseDriver;
 use SMWks\LaravelDbSnapshots\Drivers\MysqlDriver;
 use SMWks\LaravelDbSnapshots\Drivers\PostgresDriver;
+use SMWks\LaravelDbSnapshots\Stores\FilesystemSnapshotStore;
+use SMWks\LaravelDbSnapshots\Stores\SnapshotStore;
 use Symfony\Component\Process\Process;
 
 class SnapshotPlan
@@ -41,12 +45,14 @@ class SnapshotPlan
 
     public array $postLoadSqls = [];
 
+    public array $tags = [];
+
+    public bool $captureRowCounts = false;
+
     /** @var Collection<Snapshot> */
     public readonly Collection $snapshots;
 
-    public readonly FilesystemAdapter $archiveDisk;
-
-    public readonly string $archivePath;
+    public readonly SnapshotStore $archiveStore;
 
     public readonly FilesystemAdapter $localDisk;
 
@@ -76,16 +82,8 @@ class SnapshotPlan
         $snapshotPlans = collect($snapshotPlanConfigs)
             ->map(fn ($config, $name) => new SnapshotPlan($name, $config));
 
-        $archiveDisk = config('db-snapshots.filesystem.archive_disk') === 'cloud'
-            ? Storage::cloud()
-            : Storage::disk(config('db-snapshots.filesystem.archive_disk'));
-
-        $archivePath = config('db-snapshots.filesystem.archive_path');
-
-        foreach ($archiveDisk->allFiles($archivePath) as $archiveFile) {
+        foreach ($snapshotPlans->first()->archiveStore->allFiles() as $archiveFileName) {
             $accepted = false;
-
-            $archiveFileName = Str::substr($archiveFile, strlen($archivePath) + 1);
 
             $snapshotPlansOrdered = $snapshotPlans->sort(
                 fn (SnapshotPlan $a, SnapshotPlan $b) => (strlen($b->fileTemplateParts['prefix']) + strlen($b->fileTemplateParts['postfix']))
@@ -101,7 +99,7 @@ class SnapshotPlan
             }
 
             if ($accepted === false) {
-                static::$unacceptedFiles[] = $archiveFile;
+                static::$unacceptedFiles[] = $archiveFileName;
             }
         }
 
@@ -168,17 +166,29 @@ class SnapshotPlan
         $this->keepLast = (int) ($config['keep_last'] ?? 1);
         $this->environmentLocks = $config['environment_locks'] ?? ['create' => 'production', 'load' => 'local'];
         $this->postLoadSqls = $config['post_load_sqls'] ?? [];
+        $this->tags = $config['tags'] ?? [];
+        $this->captureRowCounts = (bool) ($config['capture_row_counts'] ?? false);
 
         $this->snapshots = new Collection;
 
-        $this->archiveDisk = config('db-snapshots.filesystem.archive_disk') === 'cloud'
-            ? Storage::cloud()
-            : Storage::disk(config('db-snapshots.filesystem.archive_disk'));
+        $this->archiveStore = static::makeArchiveStore($this->name);
 
         $this->localDisk = Storage::disk(config('db-snapshots.filesystem.local_disk'));
 
-        $this->archivePath = rtrim(config('db-snapshots.filesystem.archive_path'), '/');
         $this->localPath = rtrim(config('db-snapshots.filesystem.local_path'), '/');
+    }
+
+    protected static function makeArchiveStore(string $planName): SnapshotStore
+    {
+        $archiveDiskConfig = config('db-snapshots.filesystem.archive_disk');
+
+        $disk = $archiveDiskConfig === 'cloud'
+            ? Storage::cloud()
+            : Storage::disk($archiveDiskConfig);
+
+        $archivePath = rtrim(config('db-snapshots.filesystem.archive_path'), '/');
+
+        return new FilesystemSnapshotStore($disk, $archivePath);
     }
 
     public function getDriver(): DatabaseDriver
@@ -234,6 +244,10 @@ class SnapshotPlan
 
         $localFileFullPath = $this->localDisk->path("{$this->localPath}/{$fileName}");
 
+        $startedAt = microtime(true);
+
+        $dataTables = $this->resolveDataTables();
+
         try {
             $commands = $driver->buildDumpCommand(
                 $localFileFullPath,
@@ -279,10 +293,12 @@ class SnapshotPlan
             $localFileFullPath .= '.gz';
         }
 
-        $archiveFile = "{$this->archivePath}/$fileName";
+        $durationSeconds = (int) round(microtime(true) - $startedAt);
 
-        // store in cloud and remove from local
-        $this->archiveDisk->put($archiveFile, fopen($localFileFullPath, 'r+'));
+        $metadata = $this->buildMetadata($localFileFullPath, $date, $dataTables, $durationSeconds, $driver);
+
+        // store in archive (filesystem or remote) and remove from local
+        $this->archiveStore->publish($fileName, $localFileFullPath, $metadata);
         $this->localDisk->delete("{$this->localPath}/{$fileName}");
 
         $snapshot = new Snapshot($fileName, $date, $this);
@@ -293,6 +309,72 @@ class SnapshotPlan
         }
 
         return $snapshot;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function resolveDataTables(): array
+    {
+        if ($this->tables) {
+            return $this->schemaOnlyTables
+                ? array_values(array_diff($this->tables, $this->schemaOnlyTables))
+                : $this->tables;
+        }
+
+        if (! $this->captureRowCounts) {
+            return [];
+        }
+
+        $allTables = collect(Schema::connection($this->connection)->getTables())
+            ->pluck('name')
+            ->all();
+
+        return array_values(array_diff($allTables, $this->ignoreTables, $this->schemaOnlyTables));
+    }
+
+    /**
+     * @param  array<int, string>  $dataTables
+     * @return array<string, int>|null
+     */
+    protected function resolveRowCounts(array $dataTables): ?array
+    {
+        if (! $this->captureRowCounts) {
+            return null;
+        }
+
+        $connection = DB::connection($this->connection);
+
+        return collect($dataTables)
+            ->mapWithKeys(fn (string $table) => [$table => $connection->table($table)->count()])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $dataTables
+     * @return array<string, mixed>
+     */
+    protected function buildMetadata(string $localFileFullPath, Carbon $date, array $dataTables, int $durationSeconds, DatabaseDriver $driver): array
+    {
+        $tablesKnown = (bool) $this->tables || $this->captureRowCounts;
+
+        return [
+            'size' => filesize($localFileFullPath),
+            'checksum' => 'sha256:'.hash_file('sha256', $localFileFullPath),
+            'duration_seconds' => $durationSeconds,
+            'driver' => $driver::class,
+            'tables' => $dataTables,
+            'schema_only_tables' => $this->schemaOnlyTables,
+            'table_count' => $tablesKnown ? count($dataTables) + count($this->schemaOnlyTables) : null,
+            'row_counts' => $this->resolveRowCounts($dataTables),
+            'app' => config('db-snapshots.identity.app') ?? config('app.name'),
+            'environment' => app()->environment(),
+            'app_version' => config('db-snapshots.identity.app_version'),
+            'php_version' => PHP_VERSION,
+            'laravel_version' => Application::VERSION,
+            'tags' => $this->tags,
+            'created_at' => $date->toIso8601String(),
+        ];
     }
 
     public function matchFileAndDate(string $testFileName): false|Carbon

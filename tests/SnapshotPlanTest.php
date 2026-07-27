@@ -62,10 +62,11 @@ test('create', function () {
     // assert snapshot object is right
     expect($snapshot->fileName)->toBe('db-snapshot-daily-'.date('Ymd').'.sql.gz');
 
-    // assert file actually on disk
+    // assert file and metadata sidecar actually on disk
     $files = $archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path'));
-    expect($files)->toHaveCount(1);
+    expect($files)->toHaveCount(2);
     expect(__DIR__.'/fixtures/local-filesystem/'.$expectedFile)->toBeFile();
+    expect(__DIR__.'/fixtures/local-filesystem/'.$expectedFile.'.json')->toBeFile();
 });
 
 test('create with table list', function () {
@@ -169,10 +170,10 @@ test('file template with hour format', function () {
     $expectedFileName = 'db-snapshot-hourly-'.date('YmdH').'.sql.gz';
     expect($snapshot->fileName)->toBe($expectedFileName);
 
-    // Test that the file was created
+    // Test that the file and metadata sidecar were created
     $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));
     $files = $archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path'));
-    expect($files)->toHaveCount(1);
+    expect($files)->toHaveCount(2);
 
     // Test that matchFileAndDate can parse the filename correctly
     $parsedDate = $snapshotPlan->matchFileAndDate($snapshot->fileName);

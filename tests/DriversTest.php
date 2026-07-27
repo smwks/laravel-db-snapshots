@@ -309,5 +309,5 @@ test('postgres driver creates snapshot with fakepgdump', function () {
 
     $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));
     $files = $archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path'));
-    expect($files)->toHaveCount(1);
+    expect($files)->toHaveCount(2);
 });

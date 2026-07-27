@@ -4,6 +4,13 @@ return [
     // Enable smart timestamp-based caching
     'cache_by_default' => false,
 
+    // Identity fields included in every snapshot's metadata sidecar.
+    // 'app' falls back to config('app.name') when left null.
+    'identity' => [
+        'app' => env('DB_SNAPSHOTS_IDENTITY_APP'),
+        'app_version' => env('DB_SNAPSHOTS_IDENTITY_APP_VERSION'),
+    ],
+
     'filesystem' => [
         'local_disk' => env('DB_SNAPSHOTS_LOCAL_DISK', 'local'),
         'local_path' => 'db-snapshots',
@@ -42,6 +49,14 @@ return [
             'tables' => [],
             'ignore_tables' => [],
             'keep_last' => 1,
+            // Free-form tags included in this plan's snapshot metadata
+            'tags' => [],
+            // Run SELECT COUNT(*) per data table and resolve the full table
+            // list when 'tables' is empty. Requires a working database
+            // connection for this plan (not just dump-tool credentials).
+            // Off by default since COUNT(*) can be costly on very large
+            // tables.
+            'capture_row_counts' => false,
             'environment_locks' => [
                 'create' => 'production',
                 'load' => 'local',

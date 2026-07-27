@@ -25,9 +25,7 @@ class Snapshot
     public function getSize(): int
     {
         if (! isset($this->size)) {
-            $this->size = $this->snapshotPlan->archiveDisk->size(
-                "{$this->snapshotPlan->archivePath}/{$this->fileName}"
-            );
+            $this->size = $this->snapshotPlan->archiveStore->size($this->fileName);
         }
 
         return $this->size;
@@ -87,14 +85,13 @@ class Snapshot
 
         // Download with or without progress tracking
         if ($this->progressCallback) {
-            $archivePath = "{$this->snapshotPlan->archivePath}/{$this->fileName}";
             $localPath = "{$this->snapshotPlan->localPath}/{$this->fileName}";
 
             // Get total size for progress calculation
-            $totalSize = $this->snapshotPlan->archiveDisk->size($archivePath);
+            $totalSize = $this->snapshotPlan->archiveStore->size($this->fileName);
 
             // Open streams
-            $sourceStream = $this->snapshotPlan->archiveDisk->readStream($archivePath);
+            $sourceStream = $this->snapshotPlan->archiveStore->readStream($this->fileName);
 
             if (! $this->snapshotPlan->localDisk->exists($this->snapshotPlan->localPath)) {
                 $this->snapshotPlan->localDisk->makeDirectory($this->snapshotPlan->localPath);
@@ -120,7 +117,7 @@ class Snapshot
         } else {
             $this->snapshotPlan->localDisk->put(
                 "{$this->snapshotPlan->localPath}/{$this->fileName}",
-                $this->snapshotPlan->archiveDisk->get("{$this->snapshotPlan->archivePath}/{$this->fileName}")
+                $this->snapshotPlan->archiveStore->get($this->fileName)
             );
         }
 
@@ -170,7 +167,7 @@ class Snapshot
             $this->removeLocalCopy();
         }
 
-        return $this->snapshotPlan->archiveDisk->delete("{$this->snapshotPlan->archivePath}/{$this->fileName}");
+        return $this->snapshotPlan->archiveStore->delete($this->fileName);
     }
 
     protected function shouldRefreshCache(): bool
