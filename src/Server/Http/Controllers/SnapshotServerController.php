@@ -54,6 +54,34 @@ class SnapshotServerController
         ]);
     }
 
+    public function store(Request $request, string $project, string $plan)
+    {
+        $request->validate([
+            'file' => ['required', 'file'],
+            'metadata' => ['required', 'string'],
+        ]);
+
+        [$disk, $path] = $this->diskAndPath($project, $plan);
+
+        $uploaded = $request->file('file');
+        $fileName = $uploaded->getClientOriginalName();
+
+        $disk->put("{$path}/{$fileName}", fopen($uploaded->getRealPath(), 'r'));
+        $disk->put("{$path}/{$fileName}.json", $request->input('metadata'));
+
+        return response()->json(['file' => $fileName], 201);
+    }
+
+    public function destroy(Request $request, string $project, string $plan, string $file)
+    {
+        [$disk, $path] = $this->diskAndPath($project, $plan);
+
+        $disk->delete("{$path}/{$file}.json");
+        $disk->delete("{$path}/{$file}");
+
+        return response()->noContent();
+    }
+
     protected function diskAndPath(string $project, string $plan): array
     {
         $projectConfig = config("db-snapshots.server.projects.{$project}");

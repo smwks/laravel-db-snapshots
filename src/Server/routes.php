@@ -9,4 +9,6 @@ Route::prefix(config('db-snapshots.server.route_prefix', 'api/db-snapshots'))
     ->group(function () {
         Route::get('{project}/{plan}', [SnapshotServerController::class, 'index']);
         Route::get('{project}/{plan}/{file}', [SnapshotServerController::class, 'download']);
+        Route::post('{project}/{plan}', [SnapshotServerController::class, 'store']);
+        Route::delete('{project}/{plan}/{file}', [SnapshotServerController::class, 'destroy']);
     });
