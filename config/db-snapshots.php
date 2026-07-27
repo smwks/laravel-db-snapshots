@@ -18,6 +18,15 @@ return [
         'archive_path' => 'db-snapshots',
     ],
 
+    // Used when filesystem.archive_disk is 'remote' — talks to another
+    // instance of this package with its server feature enabled.
+    'remote' => [
+        'endpoint' => env('DB_SNAPSHOTS_REMOTE_ENDPOINT'),
+        'project' => env('DB_SNAPSHOTS_REMOTE_PROJECT'),
+        'token' => env('DB_SNAPSHOTS_REMOTE_TOKEN'),
+        'timeout' => env('DB_SNAPSHOTS_REMOTE_TIMEOUT', 300),
+    ],
+
     // Global SQL commands to run after ANY snapshot load
     'post_load_sqls' => [
         // Example: 'SET GLOBAL time_zone = "+00:00"',

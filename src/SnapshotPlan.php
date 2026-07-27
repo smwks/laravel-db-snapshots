@@ -18,6 +18,7 @@ use SMWks\LaravelDbSnapshots\Drivers\DatabaseDriver;
 use SMWks\LaravelDbSnapshots\Drivers\MysqlDriver;
 use SMWks\LaravelDbSnapshots\Drivers\PostgresDriver;
 use SMWks\LaravelDbSnapshots\Stores\FilesystemSnapshotStore;
+use SMWks\LaravelDbSnapshots\Stores\RemoteSnapshotStore;
 use SMWks\LaravelDbSnapshots\Stores\SnapshotStore;
 use Symfony\Component\Process\Process;
 
@@ -82,24 +83,32 @@ class SnapshotPlan
         $snapshotPlans = collect($snapshotPlanConfigs)
             ->map(fn ($config, $name) => new SnapshotPlan($name, $config));
 
-        foreach ($snapshotPlans->first()->archiveStore->allFiles() as $archiveFileName) {
-            $accepted = false;
-
-            $snapshotPlansOrdered = $snapshotPlans->sort(
-                fn (SnapshotPlan $a, SnapshotPlan $b) => (strlen($b->fileTemplateParts['prefix']) + strlen($b->fileTemplateParts['postfix']))
-                    > (strlen($a->fileTemplateParts['prefix']) + strlen($a->fileTemplateParts['postfix']))
-            );
-
-            foreach ($snapshotPlansOrdered as $snapshotPlan) {
-                $accepted = $snapshotPlan->accept($archiveFileName);
-
-                if ($accepted) {
-                    break;
+        if (config('db-snapshots.filesystem.archive_disk') === 'remote') {
+            foreach ($snapshotPlans as $snapshotPlan) {
+                foreach ($snapshotPlan->archiveStore->allFiles() as $archiveFileName) {
+                    $snapshotPlan->accept($archiveFileName);
                 }
             }
+        } else {
+            foreach ($snapshotPlans->first()->archiveStore->allFiles() as $archiveFileName) {
+                $accepted = false;
 
-            if ($accepted === false) {
-                static::$unacceptedFiles[] = $archiveFileName;
+                $snapshotPlansOrdered = $snapshotPlans->sort(
+                    fn (SnapshotPlan $a, SnapshotPlan $b) => (strlen($b->fileTemplateParts['prefix']) + strlen($b->fileTemplateParts['postfix']))
+                        > (strlen($a->fileTemplateParts['prefix']) + strlen($a->fileTemplateParts['postfix']))
+                );
+
+                foreach ($snapshotPlansOrdered as $snapshotPlan) {
+                    $accepted = $snapshotPlan->accept($archiveFileName);
+
+                    if ($accepted) {
+                        break;
+                    }
+                }
+
+                if ($accepted === false) {
+                    static::$unacceptedFiles[] = $archiveFileName;
+                }
             }
         }
 
@@ -181,6 +190,16 @@ class SnapshotPlan
     protected static function makeArchiveStore(string $planName): SnapshotStore
     {
         $archiveDiskConfig = config('db-snapshots.filesystem.archive_disk');
+
+        if ($archiveDiskConfig === 'remote') {
+            return new RemoteSnapshotStore(
+                endpoint: config('db-snapshots.remote.endpoint'),
+                project: config('db-snapshots.remote.project') ?? config('app.name'),
+                plan: $planName,
+                token: config('db-snapshots.remote.token'),
+                timeout: (int) config('db-snapshots.remote.timeout', 300),
+            );
+        }
 
         $disk = $archiveDiskConfig === 'cloud'
             ? Storage::cloud()

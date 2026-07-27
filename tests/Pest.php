@@ -41,10 +41,12 @@ function defaultDailyConfig(): array
 
 function cleanupFiles(): void
 {
-    $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));
+    if (config('db-snapshots.filesystem.archive_disk') !== 'remote') {
+        $archiveDisk = Storage::disk(config('db-snapshots.filesystem.archive_disk'));
 
-    foreach ($archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path')) as $file) {
-        $archiveDisk->delete($file);
+        foreach ($archiveDisk->allFiles(config('db-snapshots.filesystem.archive_path')) as $file) {
+            $archiveDisk->delete($file);
+        }
     }
 
     $localDisk = Storage::disk(config('db-snapshots.filesystem.local_disk'));
