@@ -26,6 +26,7 @@ yarn-error.log
 
 # AI
 /.claude
+/CLAUDE.md
 
 # Misc
 phpunit.xml
