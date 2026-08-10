@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use SMWks\LaravelDbSnapshots\Server\Events\SnapshotListed;
 use SMWks\LaravelDbSnapshots\Server\ProjectResolver;
 use SMWks\LaravelDbSnapshots\Server\ServerProject;
 
@@ -26,6 +28,8 @@ test('a custom ProjectResolver binding is used instead of the config default', f
 
     Storage::disk('local')->put('server-snapshots/db-backed-app/daily/db-snapshot-daily-20250209.sql.gz', 'fake bytes');
 
+    Event::fake([SnapshotListed::class]);
+
     $response = $this->withToken('db-backed-token')
         ->getJson('/api/db-snapshots/db-backed-app/daily');
 
@@ -35,6 +39,11 @@ test('a custom ProjectResolver binding is used instead of the config default', f
             ['file' => 'db-snapshot-daily-20250209.sql.gz', 'metadata' => null],
         ],
     ]);
+
+    Event::assertDispatched(
+        SnapshotListed::class,
+        fn (SnapshotListed $event) => $event->project === 'db-backed-app'
+    );
 });
 
 test('a project the custom resolver does not recognize still 404s, ignoring config', function () {

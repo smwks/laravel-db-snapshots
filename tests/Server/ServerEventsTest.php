@@ -15,7 +15,9 @@ test('listing fires SnapshotListed', function () {
 
     Event::assertDispatched(
         SnapshotListed::class,
-        fn (SnapshotListed $event) => $event->project === 'my-app' && $event->plan === 'daily'
+        fn (SnapshotListed $event) => $event->project === 'my-app'
+            && $event->plan === 'daily'
+            && $event->ip === '127.0.0.1'
     );
 });
 
