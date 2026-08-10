@@ -5,10 +5,15 @@ namespace SMWks\LaravelDbSnapshots\Server\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SMWks\LaravelDbSnapshots\Server\ProjectResolver;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SnapshotServerController
 {
+    public function __construct(
+        protected ProjectResolver $projectResolver,
+    ) {}
+
     public function index(Request $request, string $project, string $plan)
     {
         [$disk, $path] = $this->diskAndPath($project, $plan);
@@ -104,13 +109,13 @@ class SnapshotServerController
 
     protected function diskAndPath(string $project, string $plan): array
     {
-        $projectConfig = config("db-snapshots.server.projects.{$project}");
+        $serverProject = $this->projectResolver->resolve($project);
 
-        $disk = $projectConfig['archive_disk'] === 'cloud'
+        $disk = $serverProject->archiveDisk === 'cloud'
             ? Storage::cloud()
-            : Storage::disk($projectConfig['archive_disk']);
+            : Storage::disk($serverProject->archiveDisk);
 
-        $path = rtrim($projectConfig['archive_path'], '/')."/{$plan}";
+        $path = rtrim($serverProject->archivePath, '/')."/{$plan}";
 
         return [$disk, $path];
     }
