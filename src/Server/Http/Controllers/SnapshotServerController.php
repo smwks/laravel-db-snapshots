@@ -5,6 +5,10 @@ namespace SMWks\LaravelDbSnapshots\Server\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SMWks\LaravelDbSnapshots\Server\Events\SnapshotDeleted;
+use SMWks\LaravelDbSnapshots\Server\Events\SnapshotDownloaded;
+use SMWks\LaravelDbSnapshots\Server\Events\SnapshotListed;
+use SMWks\LaravelDbSnapshots\Server\Events\SnapshotUploaded;
 use SMWks\LaravelDbSnapshots\Server\ProjectResolver;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -33,6 +37,8 @@ class SnapshotServerController
             })
             ->values();
 
+        event(new SnapshotListed($project, $plan, $request->ip()));
+
         return response()->json(['snapshots' => $snapshots]);
     }
 
@@ -45,6 +51,8 @@ class SnapshotServerController
         $filePath = "{$path}/{$file}";
 
         abort_unless($disk->exists($filePath), 404);
+
+        event(new SnapshotDownloaded($project, $plan, $file, $request->ip()));
 
         if ($disk->providesTemporaryUrls()) {
             return redirect()->away($disk->temporaryUrl($filePath, now()->addMinutes(5)));
@@ -81,6 +89,8 @@ class SnapshotServerController
 
         abort_if($metadataStored === false, 500, 'Failed to store snapshot metadata');
 
+        event(new SnapshotUploaded($project, $plan, $fileName, $request->ip()));
+
         return response()->json(['file' => $fileName], 201);
     }
 
@@ -92,6 +102,8 @@ class SnapshotServerController
 
         $disk->delete("{$path}/{$file}.json");
         $disk->delete("{$path}/{$file}");
+
+        event(new SnapshotDeleted($project, $plan, $file, $request->ip()));
 
         return response()->noContent();
     }
