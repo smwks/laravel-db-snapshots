@@ -3,12 +3,16 @@
 namespace SMWks\LaravelDbSnapshots;
 
 use Illuminate\Support\ServiceProvider;
+use SMWks\LaravelDbSnapshots\Server\ConfigProjectResolver;
+use SMWks\LaravelDbSnapshots\Server\ProjectResolver;
 
 class DbSnapshotsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/db-snapshots.php', 'db-snapshots');
+
+        $this->app->bindIf(ProjectResolver::class, ConfigProjectResolver::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
