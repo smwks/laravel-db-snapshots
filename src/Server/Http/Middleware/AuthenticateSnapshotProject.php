@@ -15,7 +15,7 @@ class AuthenticateSnapshotProject
 
     public function handle(Request $request, Closure $next): Response
     {
-        $project = $this->projectResolver->resolve($request->route('project'));
+        $project = $this->projectResolver->resolve((string) $request->route('project'));
 
         if (! $project) {
             abort(404, 'Unknown project');

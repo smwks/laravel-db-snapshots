@@ -123,6 +123,8 @@ class SnapshotServerController
     {
         $serverProject = $this->projectResolver->resolve($project);
 
+        abort_unless($serverProject, 404, 'Unknown project');
+
         $disk = $serverProject->archiveDisk === 'cloud'
             ? Storage::cloud()
             : Storage::disk($serverProject->archiveDisk);

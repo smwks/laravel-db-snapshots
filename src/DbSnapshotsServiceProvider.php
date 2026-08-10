@@ -12,7 +12,7 @@ class DbSnapshotsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/db-snapshots.php', 'db-snapshots');
 
-        $this->app->bindIf(ProjectResolver::class, ConfigProjectResolver::class);
+        $this->app->singletonIf(ProjectResolver::class, ConfigProjectResolver::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
