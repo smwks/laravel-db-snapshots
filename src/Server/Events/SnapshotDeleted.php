@@ -2,7 +2,8 @@
 
 namespace SMWks\LaravelDbSnapshots\Server\Events;
 
-class SnapshotDeleted
+/** Fired unconditionally on a delete call, even if the target file never existed — delete is idempotent. */
+final class SnapshotDeleted
 {
     public function __construct(
         public readonly string $project,

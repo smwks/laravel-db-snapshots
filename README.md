@@ -180,6 +180,70 @@ SQL commands can be configured at three levels, and they run in this order:
 ],
 ```
 
+## Server mode: project resolution and events
+
+When `server.enabled` is `true`, this package exposes an authenticated API (see `config/db-snapshots.php` under `server`) so another environment, or a centralized hub, can list, upload, download, and delete snapshots for configured projects.
+
+### Overriding the project source
+
+By default, projects are looked up from `db-snapshots.server.projects` in config via `ConfigProjectResolver`. To source projects from somewhere else (a database, an internal API, etc.), bind your own implementation of `SMWks\LaravelDbSnapshots\Server\ProjectResolver` in your app's `AppServiceProvider::register()` — no config flag needed, the last binding wins:
+
+```php
+$this->app->singleton(
+    \SMWks\LaravelDbSnapshots\Server\ProjectResolver::class,
+    \App\YourNamespace\YourResolver::class,
+);
+```
+
+Your implementation's `resolve(string $project): ?SMWks\LaravelDbSnapshots\Server\ServerProject` may be called more than once per request (it is bound as a singleton, so every call within a request shares one instance). Return `null` for an unknown project — the caller treats that as a 404. The `$project` argument is the raw, untrusted `{project}` route segment, so implementations should handle arbitrary input safely.
+
+### Events
+
+Four events are fired from `SnapshotServerController` as requests are handled:
+
+```php
+// SMWks\LaravelDbSnapshots\Server\Events\SnapshotListed
+public function __construct(
+    public readonly string $project,
+    public readonly string $plan,
+    public readonly ?string $ip,
+) {}
+
+// SMWks\LaravelDbSnapshots\Server\Events\SnapshotDownloaded
+public function __construct(
+    public readonly string $project,
+    public readonly string $plan,
+    public readonly string $file,
+    public readonly ?string $ip,
+) {}
+
+// SMWks\LaravelDbSnapshots\Server\Events\SnapshotUploaded
+public function __construct(
+    public readonly string $project,
+    public readonly string $plan,
+    public readonly string $file,
+    public readonly ?string $ip,
+) {}
+
+// SMWks\LaravelDbSnapshots\Server\Events\SnapshotDeleted
+public function __construct(
+    public readonly string $project,
+    public readonly string $plan,
+    public readonly string $file,
+    public readonly ?string $ip,
+) {}
+```
+
+- **`SnapshotListed`** fires on every list request, regardless of how many snapshots (if any) come back.
+- **`SnapshotDownloaded`** fires once the download is authorized and the response has started (a redirect was issued, or streaming has begun). It does not confirm the client fully received the file.
+- **`SnapshotUploaded`** fires only after both the snapshot file and its metadata sidecar are confirmed written.
+- **`SnapshotDeleted`** fires unconditionally on a delete call, even if the target file never existed — delete is idempotent.
+
+### Known limitations
+
+- **Synchronous listeners.** Event listeners run synchronously on the request thread. A listener that throws will turn an already-completed transport action into a client-visible 500. Listeners that do non-trivial work (e.g. writing to a database) should either avoid throwing on failure or be dispatched via a queued listener.
+- **No built-in rate limiting.** The server routes have no built-in rate-limiting and no config hook to attach middleware to them. If you need to rate-limit anonymous requests to these routes, do it at a layer in front of the app (e.g. a reverse proxy) — not via this package's config.
+
 ## Commands
 
 ### `db-snapshots:create`

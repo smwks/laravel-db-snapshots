@@ -2,7 +2,8 @@
 
 namespace SMWks\LaravelDbSnapshots\Server\Events;
 
-class SnapshotDownloaded
+/** Fired once the download is authorized and the response has begun (redirect or stream) — does not confirm the client fully received the file. */
+final class SnapshotDownloaded
 {
     public function __construct(
         public readonly string $project,
