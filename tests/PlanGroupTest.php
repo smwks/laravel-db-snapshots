@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use SMWks\LaravelDbSnapshots\PlanGroup;
 
 test('find throws exception when name is empty', function () {
@@ -79,3 +80,43 @@ test('all returns all plan groups', function () {
     expect($planGroups)->toHaveCount(2);
     expect($planGroups->first())->toBeInstanceOf(PlanGroup::class);
 });
+
+test('plansBlockedFromLoad lists plans whose load lock does not match the environment', function () {
+    config()->set('db-snapshots.plan_groups', [
+        'mixed-group' => ['plans' => ['open', 'locked']],
+    ]);
+
+    config()->set('db-snapshots.plans', [
+        'open' => defaultDailyConfig(),
+        'locked' => array_merge(defaultDailyConfig(), [
+            'file_template' => 'db-snapshot-locked-{date:Ymd}',
+            'environment_locks' => ['create' => 'production', 'load' => 'production'],
+        ]),
+    ]);
+
+    $this->app['env'] = 'local';
+
+    $blocked = PlanGroup::find('mixed-group')->plansBlockedFromLoad();
+
+    expect($blocked->pluck('name')->all())->toBe(['locked']);
+});
+
+test('dropTables refuses to drop anything when a plan is blocked by its environment lock', function () {
+    config()->set('db-snapshots.plan_groups', [
+        'mixed-group' => ['plans' => ['open', 'locked']],
+    ]);
+
+    config()->set('db-snapshots.plans', [
+        'open' => defaultDailyConfig(),
+        'locked' => array_merge(defaultDailyConfig(), [
+            'file_template' => 'db-snapshot-locked-{date:Ymd}',
+            'environment_locks' => ['create' => 'production', 'load' => 'production'],
+        ]),
+    ]);
+
+    $this->app['env'] = 'local';
+
+    DB::shouldReceive('connection')->never();
+
+    PlanGroup::find('mixed-group')->dropTables();
+})->throws(RuntimeException::class, 'blocked by environment lock: locked');

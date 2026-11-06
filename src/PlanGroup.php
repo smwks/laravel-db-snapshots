@@ -217,10 +217,31 @@ class PlanGroup
     }
 
     /**
+     * Plans in this group that cannot be loaded in the current environment
+     *
+     * @return Collection<SnapshotPlan>
+     */
+    public function plansBlockedFromLoad(): Collection
+    {
+        return $this->plans->reject(fn (SnapshotPlan $plan) => $plan->canLoad())->values();
+    }
+
+    /**
      * Drop tables on all unique database connections used by plans in this group
+     *
+     * @throws RuntimeException when any plan in the group is blocked by its environment lock
      */
     public function dropTables(): void
     {
+        $blocked = $this->plansBlockedFromLoad();
+
+        if ($blocked->isNotEmpty()) {
+            throw new RuntimeException(
+                "Cannot drop tables for plan group {$this->name}; blocked by environment lock: "
+                .$blocked->pluck('name')->implode(', ')
+            );
+        }
+
         // Collect unique connections from all plans
         $uniqueConnections = $this->plans
             ->map(fn (SnapshotPlan $plan) => $plan->connection)
